@@ -49,6 +49,8 @@ typedef struct {
   /* Camera */
   vec3 cam_r;
   vec3 cam_tr;
+  /* Plane */
+  cvec_vec4 *pl;
 } scene_t;
 
 typedef struct {
@@ -56,13 +58,25 @@ typedef struct {
   cvec_vec3 *vl;
   /* Triangle list */
   cvec_vec4 *tl;
+  /* Plane list */
+  cvec_vec4 *pl;
 } transformed_t;
+
+typedef struct {
+  /* Vertex list */
+  cvec_vec3 *vl;
+  /* Triangle list */
+  cvec_vec4 *tl;
+  cvec_float *t_valid;
+} clipped_t;
 
 typedef struct {
   /* Vertex list */
   cvec_vec2 *vl;
   /* Triangle list */
   cvec_vec4 *tl;
+  /* T Valid list*/
+  cvec_float *tv;
 } projected_t;
 
 void render(scene_t *s);

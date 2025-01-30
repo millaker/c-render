@@ -2,6 +2,7 @@
 #include "render.h"
 #include "types.h"
 #include "util.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -30,16 +31,28 @@ int main() {
   }
 
   /* Construct instances */
-  instance_t cubes[1] = {{m, {0.5, {0, 0, 0}, {-1.5, 0, 7}}}};
-  scene_t *s =
-      construct_scene(cubes, 1, (transform_t){0, {0, 0, 0}, {0, 0, 0}});
+  instance_t cubes[] = {
+      {m, {1.5, {0, 0, 0}, {-1.5, 0, 7}}},
+      {m, {0.25, {0, 0, 0}, {0, 0, 0.5}}},
+      {m, {0.5, {0, 0, 0}, {-1.5, 0, -7}}},
+  };
+  scene_t *s = construct_scene(cubes, sizeof(cubes) / sizeof(instance_t),
+                               (transform_t){0, {0, 0, 0}, {0, 0, 0}});
+  /* temp plane list */
+  cvec_vec4 *pl = cvec_vec4_alloc(5);
+  cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
+  cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+  cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+  cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
+  cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
+  s->pl = pl;
   render(s);
   cvec_vec4_free(m->t);
   cvec_vec3_free(m->v);
   free(m);
 
-  draw_triangle((vec2){0, 0}, (vec2){60, 180}, (vec2){90, 100}, 0);
-  // draw_filled_triangle((vec2){0, 0}, (vec2){60, 180}, (vec2){90, 100}, 0);
+  // draw_triangle((vec2){0, 0}, (vec2){60, 180}, (vec2){90, 100}, 0);
+  //  draw_filled_triangle((vec2){0, 0}, (vec2){60, 180}, (vec2){90, 100}, 0);
   display_show();
   display_close();
   printf("Ended successfully\n");
