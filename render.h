@@ -72,6 +72,14 @@ typedef struct {
 
 typedef struct {
   /* Vertex list */
+  cvec_vec3 *vl;
+  /* Triangle list */
+  cvec_vec4 *tl;
+  cvec_float *t_valid;
+} back_culled_t;
+
+typedef struct {
+  /* Vertex list */
   cvec_vec2 *vl;
   /* Triangle list */
   cvec_vec4 *tl;

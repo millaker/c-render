@@ -27,4 +27,8 @@ void swap_vec3(vec3 *, vec3 *);
 void swap_vec4(vec4 *, vec4 *);
 void swap_int(int *, int *);
 
+vec3 compute_vector(vec3 A, vec3 B);
+vec3 vector_cross(vec3 A, vec3 B);
+float vector_dot(vec3 A, vec3 B);
+
 #endif

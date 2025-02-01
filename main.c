@@ -33,8 +33,8 @@ int main() {
 
   /* Construct instances */
   instance_t cubes[] = {
-      {m, {1.75, {-30, 65, -10}, {1.5, 0, 15}}},
-      {m, {0.5, {45, 45, 45}, {-1.5, 0, 15}}},
+      {m, {1.75, {-30, 65, -10}, {1.5, 0, 7}}},
+      {m, {0.5, {45, 45, 45}, {-1.5, 0, 7}}},
   };
   scene_t *s = construct_scene(cubes, sizeof(cubes) / sizeof(instance_t),
                                (transform_t){0, {0, 0, 0}, {0, 0, 0}});

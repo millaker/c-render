@@ -127,6 +127,13 @@ static void free_transformed(transformed_t *t) {
   free(t);
 }
 
+static void free_back_culled(back_culled_t *b) {
+  cvec_vec3_free(b->vl);
+  cvec_vec4_free(b->tl);
+  cvec_float_free(b->t_valid);
+  free(b);
+}
+
 static void free_clipped(clipped_t *c) {
   cvec_vec3_free(c->vl);
   cvec_vec4_free(c->tl);
@@ -244,7 +251,43 @@ static vec2 project_vertex(vec3 v) {
   return viewport_to_canvas((vec2){v.x * VD / v.z, v.y * VD / v.z});
 }
 
-static projected_t *project(clipped_t *t) {
+/* Clipped triangles are in camera space, which the camera is located at 0,0,0
+ */
+static back_culled_t *back_face_culling(clipped_t *c) {
+  cvec_vec3 *nvl = cvec_vec3_copy_alloc(c->vl);
+  cvec_vec4 *ntl = cvec_vec4_copy_alloc(c->tl);
+  cvec_float *ntv = cvec_float_copy_alloc(c->t_valid);
+  /* Check every valid triangle */
+  for (size_t i = 0; i < c->tl->size; i++) {
+    if (ntv->arr[i] == 0.0)
+      continue;
+    vec4 curr_t = ntl->arr[i];
+    /* Calc triangle normal */
+    vec3 AB = compute_vector(nvl->arr[(int)curr_t.x], nvl->arr[(int)curr_t.y]);
+    vec3 BC = compute_vector(nvl->arr[(int)curr_t.y], nvl->arr[(int)curr_t.z]);
+    vec3 CAM = nvl->arr[(int)curr_t.x];
+    vec3 CROSS = vector_cross(AB, BC);
+    /* Comp */
+    float res = vector_dot(CAM, CROSS);
+    if (res > 0) {
+      ntv->arr[i] = 0.0;
+    }
+  }
+  free_clipped(c);
+  back_culled_t *b = malloc(sizeof(back_culled_t));
+  if (!b) {
+    cvec_vec3_free(nvl);
+    cvec_vec4_free(ntl);
+    cvec_float_free(ntv);
+    return NULL;
+  }
+  b->tl = ntl;
+  b->vl = nvl;
+  b->t_valid = ntv;
+  return b;
+}
+
+static projected_t *project(back_culled_t *t) {
   cvec_vec2 *new_vl = cvec_vec2_alloc(t->vl->size);
   cvec_vec4 *new_tl = cvec_vec4_copy_alloc(t->tl);
   cvec_float *new_tv = cvec_float_copy_alloc(t->t_valid);
@@ -255,7 +298,7 @@ static projected_t *project(clipped_t *t) {
     cvec_float_push(new_zl, 1 / t->vl->arr[i].z);
   }
   assert(new_vl->size == new_zl->size);
-  free_clipped(t);
+  free_back_culled(t);
   projected_t *temp = malloc(sizeof(projected_t));
   if (!temp) {
     cvec_vec2_free(new_vl);
@@ -387,7 +430,7 @@ static clipped_t *clipping(transformed_t *t) {
         cvec_vec3_push(nvl, np0);
         cvec_vec3_push(nvl, np1);
         int tmp = nvl->size;
-        cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 1, tmp - 2, curr_t.w});
+        cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 2, tmp - 1, curr_t.w});
       } else {
         /* Two inside */
         /* Calc two new vertices, append to vl */
@@ -398,8 +441,8 @@ static clipped_t *clipping(transformed_t *t) {
         cvec_vec3_push(nvl, np0);
         cvec_vec3_push(nvl, np1);
         int tmp = nvl->size;
-        cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 1, tmp - 2, curr_t.w});
-        cvec_vec4_push(ntl, (vec4){in_idx_p0, in_idx_p1, tmp - 1, curr_t.w});
+        cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 2, tmp - 1, curr_t.w});
+        cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 1, in_idx_p1, curr_t.w});
       }
     }
   }
@@ -557,7 +600,8 @@ static void output(rastered_t *r) {
 void render(scene_t *s) {
   transformed_t *t = transform(s);
   clipped_t *c = clipping(t);
-  projected_t *p = project(c);
+  back_culled_t *b = back_face_culling(c);
+  projected_t *p = project(b);
   rastered_t *r = rasterize(p);
   output(r);
 }

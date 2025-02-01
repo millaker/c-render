@@ -61,3 +61,14 @@ void swap_int(int *p0, int *p1) {
   *p0 = *p1;
   *p1 = temp;
 }
+
+vec3 compute_vector(vec3 A, vec3 B) {
+  return (vec3){B.x - A.x, B.y - A.y, B.z - A.z};
+}
+
+float vector_dot(vec3 A, vec3 B) { return A.x * B.x + A.y * B.y + A.z * B.z; }
+
+vec3 vector_cross(vec3 A, vec3 B) {
+  return (vec3){A.y * B.z - B.y * A.z, A.z * B.x - B.z * A.x,
+                A.x * B.y - B.x * A.y};
+}
