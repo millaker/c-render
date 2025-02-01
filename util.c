@@ -34,3 +34,30 @@ scene_t *construct_scene(instance_t *inst, int size, transform_t cam) {
   s->cam_tr = cam.tr;
   return s;
 }
+
+void swap_vec2(vec2 *p0, vec2 *p1) {
+  vec2 temp;
+  temp = *p0;
+  *p0 = *p1;
+  *p1 = temp;
+}
+
+void swap_vec3(vec3 *p0, vec3 *p1) {
+  vec3 temp;
+  temp = *p0;
+  *p0 = *p1;
+  *p1 = temp;
+}
+
+void swap_vec4(vec4 *p0, vec4 *p1) {
+  vec4 temp;
+  temp = *p0;
+  *p0 = *p1;
+  *p1 = temp;
+}
+
+void swap_int(int *p0, int *p1) {
+  int temp = *p0;
+  *p0 = *p1;
+  *p1 = temp;
+}

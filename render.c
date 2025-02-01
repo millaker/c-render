@@ -5,19 +5,10 @@
 #include "cvec_vec4.h"
 #include "display.h"
 #include "types.h"
+#include "util.h"
 #include <assert.h>
 #include <math.h>
 #include <stdint.h>
-
-static void swap_point(vec2 *p0, vec2 *p1) {
-  vec2 temp;
-  temp.x = p0->x;
-  temp.y = p0->y;
-  p0->x = p1->x;
-  p0->y = p1->y;
-  p1->x = temp.x;
-  p1->y = temp.y;
-}
 
 cvec_float *interpolate(int i0, float d0, int i1, float d1) {
   cvec_float *res;
@@ -47,17 +38,21 @@ void draw_line(vec2 p0, vec2 p1, uint32_t color) {
   cvec_float *temp;
   if (fabs(dx) > fabs(dy)) {
     if (p0.x > p1.x)
-      swap_point(&p0, &p1);
+      swap_vec2(&p0, &p1);
     temp = interpolate(p0.x, p0.y, p1.x, p1.y);
     for (int x = p0.x; x < (int)p1.x; x++) {
-      display_put_pixel(x, temp->arr[(int)(x - p0.x)], color);
+      int px = CANVAS_WIDTH / 2 + x;
+      int py = CANVAS_HEIGHT / 2 - (int)temp->arr[(int)(x - p0.x)];
+      display_put_pixel(px, py, color);
     }
   } else {
     if (p0.y > p1.y)
-      swap_point(&p0, &p1);
+      swap_vec2(&p0, &p1);
     temp = interpolate(p0.y, p0.x, p1.y, p1.x);
     for (int y = p0.y; y < (int)p1.y; y++) {
-      display_put_pixel(temp->arr[(int)(y - p0.y)], y, color);
+      int px = CANVAS_WIDTH / 2 + (int)temp->arr[(int)(y - p0.y)];
+      int py = CANVAS_HEIGHT / 2 - y;
+      display_put_pixel(px, py, color);
     }
   }
   cvec_float_free(temp);
@@ -72,11 +67,11 @@ void draw_triangle(vec2 p0, vec2 p1, vec2 p2, uint32_t color) {
 void draw_filled_triangle(vec2 p0, vec2 p1, vec2 p2, uint32_t color) {
   /* Sort points with y, p0 has smallest y */
   if (p1.y < p0.y)
-    swap_point(&p1, &p0);
+    swap_vec2(&p1, &p0);
   if (p2.y < p0.y)
-    swap_point(&p2, &p0);
+    swap_vec2(&p2, &p0);
   if (p2.y < p1.y)
-    swap_point(&p1, &p2);
+    swap_vec2(&p1, &p2);
 
   /* Compute coordinates of triangle edges */
   cvec_float *x01 = interpolate(p0.y, p0.x, p1.y, p1.x);
@@ -105,7 +100,7 @@ void draw_filled_triangle(vec2 p0, vec2 p1, vec2 p2, uint32_t color) {
   }
 
   /* Draw horizontal line */
-  for (int y = p0.y; y <= p2.y; y++) {
+  for (int y = p0.y; y <= (int)p2.y; y++) {
     draw_line((vec2){left->arr[(int)(y - p0.y)], y},
               (vec2){right->arr[(int)(y - p0.y)], y}, color);
   }
@@ -143,7 +138,13 @@ static void free_projected(projected_t *p) {
   cvec_vec2_free(p->vl);
   cvec_vec4_free(p->tl);
   cvec_float_free(p->tv);
+  cvec_float_free(p->zl);
   free(p);
+}
+
+static void free_rastered(rastered_t *r) {
+  cvec_vec4_free(r->pl);
+  free(r);
 }
 
 static vec3 apply_transform(vec3 p, float s, vec3 r, vec3 tr) {
@@ -244,24 +245,29 @@ static vec2 project_vertex(vec3 v) {
 }
 
 static projected_t *project(clipped_t *t) {
-  cvec_vec2 *new_vl = cvec_vec2_alloc(t->vl->size * 3);
+  cvec_vec2 *new_vl = cvec_vec2_alloc(t->vl->size);
   cvec_vec4 *new_tl = cvec_vec4_copy_alloc(t->tl);
   cvec_float *new_tv = cvec_float_copy_alloc(t->t_valid);
+  cvec_float *new_zl = cvec_float_alloc(t->tl->size);
   /* For every triangle vertex, project its vertices to the canvas */
   for (size_t i = 0; i < t->vl->size; i++) {
     cvec_vec2_push(new_vl, project_vertex(t->vl->arr[i]));
+    cvec_float_push(new_zl, 1 / t->vl->arr[i].z);
   }
+  assert(new_vl->size == new_zl->size);
   free_clipped(t);
   projected_t *temp = malloc(sizeof(projected_t));
   if (!temp) {
     cvec_vec2_free(new_vl);
     cvec_vec4_free(new_tl);
     cvec_float_free(new_tv);
+    cvec_float_free(new_zl);
     return NULL;
   }
   temp->vl = new_vl;
   temp->tl = new_tl;
   temp->tv = new_tv;
+  temp->zl = new_zl;
   return temp;
 }
 
@@ -301,7 +307,7 @@ static clipped_t *clipping(transformed_t *t) {
   /* Construct valid list in this stage */
   cvec_float *t_valid = cvec_float_alloc(t->tl->size);
   t_valid->size = t_valid->capacity;
-  for (size_t i = 0; i < t->vl->size; i++) {
+  for (size_t i = 0; i < t->tl->size; i++) {
     t_valid->arr[i] = 1.0;
   }
   for (size_t p = 0; p < t->pl->size; p++) {
@@ -397,6 +403,7 @@ static clipped_t *clipping(transformed_t *t) {
       }
     }
   }
+  assert(t_valid->size == t->tl->size);
   /* Match tvalid with tl size*/
   for (size_t i = t_valid->size; i < ntl->size; i++) {
     cvec_float_push(t_valid, 1.0);
@@ -416,9 +423,141 @@ static clipped_t *clipping(transformed_t *t) {
   return cl;
 }
 
+static rastered_t *rasterize(projected_t *p) {
+  cvec_vec4 *npl = cvec_vec4_alloc(1);
+  /* For every triangle, calculate which pixel to color with z test */
+  for (size_t i = 0; i < p->tl->size; i++) {
+    if (p->tv->arr[i] == 0.0)
+      continue;
+    vec4 curr_t = p->tl->arr[i];
+    int idx_x = curr_t.x, idx_y = curr_t.y, idx_z = curr_t.z;
+    vec2 p0 = p->vl->arr[idx_x];
+    vec2 p1 = p->vl->arr[idx_y];
+    vec2 p2 = p->vl->arr[idx_z];
+    /* Sort points with y, p0 has smallest y */
+    if (p1.y < p0.y) {
+      swap_vec2(&p1, &p0);
+      swap_int(&idx_y, &idx_x);
+    }
+    if (p2.y < p0.y) {
+      swap_vec2(&p2, &p0);
+      swap_int(&idx_z, &idx_x);
+    }
+    if (p2.y < p1.y) {
+      swap_vec2(&p1, &p2);
+      swap_int(&idx_z, &idx_y);
+    }
+
+    /* Interpolate x values for each edge */
+    cvec_float *x01 = interpolate(p0.y, p0.x, p1.y, p1.x);
+    cvec_float *x02 = interpolate(p0.y, p0.x, p2.y, p2.x);
+    cvec_float *x12 = interpolate(p1.y, p1.x, p2.y, p2.x);
+
+    cvec_float *x012 = cvec_float_alloc(x01->size + x12->size - 1);
+    x012->size = x012->capacity;
+    for (int i = 0; i < x01->size - 1; i++) {
+      x012->arr[i] = x01->arr[i];
+    }
+    for (int i = x01->size - 1; i < x012->size; i++) {
+      x012->arr[i] = x12->arr[i - (x01->size - 1)];
+    }
+    cvec_float_free(x01);
+    cvec_float_free(x12);
+
+    /* Interpolate z values for each edge */
+    float z0 = p->zl->arr[idx_x];
+    float z1 = p->zl->arr[idx_y];
+    float z2 = p->zl->arr[idx_z];
+    cvec_float *z01 = interpolate(p0.y, z0, p1.y, z1);
+    cvec_float *z02 = interpolate(p0.y, z0, p2.y, z2);
+    cvec_float *z12 = interpolate(p1.y, z1, p2.y, z2);
+
+    cvec_float *z012 = cvec_float_alloc(z01->size + z12->size - 1);
+    z012->size = z012->capacity;
+    for (size_t i = 0; i < z01->size - 1; i++) {
+      z012->arr[i] = z01->arr[i];
+    }
+    for (size_t i = z01->size - 1; i < z012->size; i++) {
+      z012->arr[i] = z12->arr[i - (z01->size - 1)];
+    }
+
+    cvec_float_free(z01);
+    cvec_float_free(z12);
+    assert(z012->size == x012->size);
+
+    /* Raster pixels between the two sides */
+    /* Determine left right */
+    int m = x02->size / 2;
+    cvec_float *left, *right, *left_z, *right_z;
+    if (x02->arr[m] < x012->arr[m]) {
+      left = x02;
+      right = x012;
+      left_z = z02;
+      right_z = z012;
+    } else {
+      left = x012;
+      right = x02;
+      left_z = z012;
+      right_z = z02;
+    }
+
+    /* Process every horizontal line */
+    for (int y = p0.y; y <= (int)p2.y; y++) {
+      int idx = y - (int)p0.y;
+      int left_x = left->arr[idx], right_x = right->arr[idx];
+      if (left_x > right_x)
+        continue;
+      assert(left_x <= right_x);
+      cvec_float *ztemp =
+          interpolate(left_x, left_z->arr[idx], right_x, right_z->arr[idx]);
+      assert(ztemp->size == right_x - left_x + 1);
+      /* Convert to pixel space */
+      for (int i = left_x; i < right_x; i++) {
+        int idx = i - left_x;
+        cvec_vec4_push(npl, (vec4){i, y, ztemp->arr[idx], curr_t.w});
+      }
+      cvec_float_free(ztemp);
+    }
+
+    cvec_float_free(x02);
+    cvec_float_free(z02);
+    cvec_float_free(z012);
+    cvec_float_free(x012);
+  }
+  free_projected(p);
+  rastered_t *r = malloc(sizeof(rastered_t));
+  if (!r) {
+    cvec_vec4_free(npl);
+    return NULL;
+  }
+  r->pl = npl;
+  return r;
+}
+
+static void output(rastered_t *r) {
+  float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
+  for (size_t i = 0; i < r->pl->size; i++) {
+    vec4 curr_p = r->pl->arr[i];
+    int px = CANVAS_WIDTH / 2 + (int)curr_p.x;
+    int py = CANVAS_HEIGHT / 2 - (int)curr_p.y;
+    /* Ignore points outside canvas */
+    if (px >= CANVAS_WIDTH || py >= CANVAS_HEIGHT || px < 0 || py < 0) {
+      continue;
+    }
+    /* Compare 1/z, ignore smaller */
+    if (curr_p.z < zbuf[px][py]) {
+      continue;
+    }
+    zbuf[px][py] = curr_p.z;
+    display_put_pixel(px, py, curr_p.w);
+  }
+  free_rastered(r);
+}
+
 void render(scene_t *s) {
   transformed_t *t = transform(s);
   clipped_t *c = clipping(t);
   projected_t *p = project(c);
-  draw_canvas(p);
+  rastered_t *r = rasterize(p);
+  output(r);
 }

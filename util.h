@@ -22,4 +22,9 @@ typedef struct {
 
 scene_t *construct_scene(instance_t *inst, int size, transform_t cam);
 
+void swap_vec2(vec2 *, vec2 *);
+void swap_vec3(vec3 *, vec3 *);
+void swap_vec4(vec4 *, vec4 *);
+void swap_int(int *, int *);
+
 #endif

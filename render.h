@@ -77,7 +77,14 @@ typedef struct {
   cvec_vec4 *tl;
   /* T Valid list*/
   cvec_float *tv;
+  /* Z list */
+  cvec_float *zl;
 } projected_t;
+
+typedef struct {
+  /* Pixel list */
+  cvec_vec4 *pl; // {x, y, z, c}
+} rastered_t;
 
 void render(scene_t *s);
 

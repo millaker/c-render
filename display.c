@@ -24,11 +24,9 @@ int display_init() {
 }
 
 void display_put_pixel(int x, int y, uint32_t color) {
-  uint32_t fx = f.width / 2 + x;
-  uint32_t fy = f.height / 2 - y;
-  if (fx >= CANVAS_WIDTH || fy >= CANVAS_HEIGHT || fx < 0 || fy < 0)
+  if (x >= CANVAS_WIDTH || y >= CANVAS_HEIGHT || x < 0 || y < 0)
     return;
-  fenster_pixel(&f, fx, fy) = color;
+  fenster_pixel(&f, x, y) = color;
 }
 
 /*
