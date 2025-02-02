@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     model_t *m = load_model(argv[1]);
     light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {1, 0, -1, 0.8}}};
     instance_t inst[] = {
-        {m, {0.5, {0, 135, 0}, {0.0, 0.0, 7}}},
+        {m, {1.0, {0, 150, 0}, {0.0, 0.0, 20}}},
     };
     scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
                                  (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,

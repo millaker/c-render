@@ -392,14 +392,14 @@ static clipped_t *clipping(transformed_t *t) {
   /* Construct valid list in this stage */
   cvec_float *t_valid = cvec_float_alloc(t->tl->size);
   t_valid->size = t_valid->capacity;
-  for (size_t i = 0; i < t->tl->size; i++) {
+  for (size_t i = 0; i < t_valid->size; i++) {
     t_valid->arr[i] = 1.0;
   }
   for (size_t p = 0; p < t->pl->size; p++) {
     vec4 curr_plane = t->pl->arr[p];
     /* For every triangle, check against clipping planes */
-    for (size_t i = 0; i < t->tl->size; i++) {
-      vec4 curr_t = t->tl->arr[i];
+    for (size_t i = 0; i < ntl->size; i++) {
+      vec4 curr_t = ntl->arr[i];
       vec3 *curr_vl = nvl->arr;
       vec3 p_a = curr_vl[(int)curr_t.x];
       vec3 p_b = curr_vl[(int)curr_t.y];
@@ -473,6 +473,7 @@ static clipped_t *clipping(transformed_t *t) {
         cvec_vec3_push(nvl, np1);
         int tmp = nvl->size;
         cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 2, tmp - 1, curr_t.w});
+        cvec_float_push(t_valid, 1.0);
       } else {
         /* Two inside */
         /* Calc two new vertices, append to vl */
@@ -485,14 +486,12 @@ static clipped_t *clipping(transformed_t *t) {
         int tmp = nvl->size;
         cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 2, tmp - 1, curr_t.w});
         cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 1, in_idx_p1, curr_t.w});
+        cvec_float_push(t_valid, 1.0);
+        cvec_float_push(t_valid, 1.0);
       }
     }
   }
-  assert(t_valid->size == t->tl->size);
-  /* Match tvalid with tl size*/
-  for (size_t i = t_valid->size; i < ntl->size; i++) {
-    cvec_float_push(t_valid, 1.0);
-  }
+  assert(t_valid->size == ntl->size);
   free_transformed(t);
   clipped_t *cl = malloc(sizeof(clipped_t));
   if (!cl) {
@@ -548,9 +547,26 @@ static uint32_t apply_light(float I, uint32_t c) {
   return (int)(r * I) | ((int)(g * I) << 8) | ((int)(b * I) << 16);
 }
 
+static void output(int x, int y, float z, uint32_t color) {
+  static float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
+  int px = CANVAS_WIDTH / 2 + x;
+  int py = CANVAS_HEIGHT / 2 - y;
+  /* Ignore points outside canvas */
+  if (px >= CANVAS_WIDTH || py >= CANVAS_HEIGHT || px < 0 || py < 0) {
+    return;
+  }
+  /* Compare 1/z, ignore smaller */
+  if (z < zbuf[px][py]) {
+    return;
+  }
+  zbuf[px][py] = z;
+  display_put_pixel(px, py, color);
+}
+
 static rastered_t *rasterize(projected_t *p) {
-  cvec_vec4 *npl = cvec_vec4_alloc(1);
+  float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
   /* For every triangle, calculate which pixel to color with z test */
+  printf("%ld triangles to raster\n", p->tl->size);
   for (size_t i = 0; i < p->tl->size; i++) {
     if (p->tv->arr[i] == 0.0)
       continue;
@@ -636,6 +652,7 @@ static rastered_t *rasterize(projected_t *p) {
     float rpl = vector_len(rp);
     rp = (vec3){rp.x / rpl, rp.y / rpl, rp.z / rpl}; /* Normalized */
     float I = calc_light_intensity(p->lt, p->ll, rp, p->tn->arr[i]);
+    uint32_t c = apply_light(I, curr_t.w);
 
     /* Process every horizontal line */
     for (int y = p0.y; y <= (int)p2.y; y++) {
@@ -650,8 +667,7 @@ static rastered_t *rasterize(projected_t *p) {
       /* Convert to pixel space */
       for (int i = left_x; i < right_x; i++) {
         int idx = i - left_x;
-        cvec_vec4_push(npl,
-                       (vec4){i, y, ztemp->arr[idx], apply_light(I, curr_t.w)});
+        output(i, y, ztemp->arr[idx], c);
       }
       cvec_float_free(ztemp);
     }
@@ -662,40 +678,20 @@ static rastered_t *rasterize(projected_t *p) {
     cvec_float_free(x012);
   }
   free_projected(p);
-  rastered_t *r = malloc(sizeof(rastered_t));
-  if (!r) {
-    cvec_vec4_free(npl);
-    return NULL;
-  }
-  r->pl = npl;
-  return r;
-}
-
-static void output(rastered_t *r) {
-  float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
-  for (size_t i = 0; i < r->pl->size; i++) {
-    vec4 curr_p = r->pl->arr[i];
-    int px = CANVAS_WIDTH / 2 + (int)curr_p.x;
-    int py = CANVAS_HEIGHT / 2 - (int)curr_p.y;
-    /* Ignore points outside canvas */
-    if (px >= CANVAS_WIDTH || py >= CANVAS_HEIGHT || px < 0 || py < 0) {
-      continue;
-    }
-    /* Compare 1/z, ignore smaller */
-    if (curr_p.z < zbuf[px][py]) {
-      continue;
-    }
-    zbuf[px][py] = curr_p.z;
-    display_put_pixel(px, py, curr_p.w);
-  }
-  free_rastered(r);
+  return NULL;
 }
 
 void render(scene_t *s) {
+  printf("Transforming...\n");
   transformed_t *t = transform(s);
+  printf("Clipping...\n");
   clipped_t *c = clipping(t);
+  printf("Back face culling...\n");
   back_culled_t *b = back_face_culling(c);
+  printf("Projecting...\n");
   projected_t *p = project(b);
+  printf("Rasterizing...\n");
   rastered_t *r = rasterize(p);
-  output(r);
+  printf("Raster Done\n");
+  fflush(stdout);
 }
