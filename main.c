@@ -23,8 +23,32 @@ static vec4 unicube_triangles[] = {
     {4, 5, 1, RED}, {4, 1, 0, RED}, {2, 6, 7, RED}, {2, 7, 3, RED},
 };
 
-int main() {
+int main(int argc, char *argv[]) {
   display_init();
+  if (argc != 1) {
+    model_t *m = load_model(argv[1]);
+    light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {1, 0, -1, 0.8}}};
+    instance_t inst[] = {
+        {m, {0.5, {0, 135, 0}, {0.0, 0.0, 7}}},
+    };
+    scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
+                                 (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
+                                 sizeof(l) / sizeof(l[0]));
+    /* temp plane list */
+    cvec_vec4 *pl = cvec_vec4_alloc(5);
+    cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
+    cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+    cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+    cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
+    cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
+    s->pl = pl;
+    render(s);
+    display_show();
+    display_close();
+    free_model(m);
+    printf("Render model successfully\n");
+    return 0;
+  }
   /* Construct cube model */
   model_t *m = malloc(sizeof(model_t));
   m->t = cvec_vec4_alloc(12);

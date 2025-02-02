@@ -1,5 +1,6 @@
 #include "util.h"
 #include <math.h>
+#include <stdio.h>
 
 scene_t *construct_scene(instance_t *inst, int isize, transform_t cam,
                          light_t *l, int lsize) {
@@ -125,4 +126,43 @@ model_t *generate_sphere(int divs, int color) {
   m->t = tl;
   m->v = vl;
   return m;
+}
+
+model_t *load_model(char *file) {
+  FILE *f = fopen(file, "r");
+  if (!f) {
+    printf("Read file %s error\n", file);
+    return NULL;
+  }
+  model_t *m = malloc(sizeof(model_t));
+  if (!m)
+    return NULL;
+  cvec_vec3 *vl = cvec_vec3_alloc(1);
+  cvec_vec4 *tl = cvec_vec4_alloc(1);
+
+  char buf[1024] = {0};
+  float x, y, z;
+  int i, j, k;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (buf[0] == 'v') {
+      /* Add vertex */
+      sscanf(buf, "v %f %f %f\n", &x, &y, &z);
+      cvec_vec3_push(vl, (vec3){x, y, z});
+    } else if (buf[0] == 'f') {
+      /* Add face */
+      sscanf(buf, "f %d %d %d\n", &i, &j, &k);
+      cvec_vec4_push(tl, (vec4){i - 1, j - 1, k - 1, 0xffff00});
+    }
+  }
+  printf("Read %ld vertices and %ld faces from %s\n", vl->size, tl->size, file);
+  m->t = tl;
+  m->v = vl;
+  fclose(f);
+  return m;
+}
+
+void free_model(model_t *m) {
+  cvec_vec3_free(m->v);
+  cvec_vec4_free(m->t);
+  free(m);
 }

@@ -35,6 +35,8 @@ typedef struct {
 scene_t *construct_scene(instance_t *inst, int isize, transform_t cam,
                          light_t *l, int lsize);
 model_t *generate_sphere(int divs, int color);
+model_t *load_model(char *file);
+void free_model(model_t *m);
 
 void swap_vec2(vec2 *, vec2 *);
 void swap_vec3(vec3 *, vec3 *);
