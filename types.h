@@ -1,6 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <math.h>
 #include <stdint.h>
 
 /* Colors */
@@ -11,7 +12,7 @@
 #define PURPLE 0xff00ff
 #define CYAN 0x00ffff
 
-#define PI 3.14
+#define PI M_PI
 
 typedef struct {
   float x;

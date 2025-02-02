@@ -18,7 +18,7 @@ int display_init() {
     return -1;
   }
   for (int i = 0; i < f.height * f.width; i++) {
-    f.buf[i] = 0xffffff;
+    f.buf[i] = 0;
   }
   return 0;
 }

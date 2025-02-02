@@ -117,6 +117,8 @@ static void free_scene(scene_t *s) {
   cvec_vec3_free(s->tr_r);
   cvec_vec3_free(s->tr_tr);
   cvec_vec4_free(s->pl);
+  cvec_float_free(s->lt);
+  cvec_vec4_free(s->ll);
   free(s);
 }
 
@@ -124,6 +126,8 @@ static void free_transformed(transformed_t *t) {
   cvec_vec3_free(t->vl);
   cvec_vec4_free(t->tl);
   cvec_vec4_free(t->pl);
+  cvec_float_free(t->lt);
+  cvec_vec4_free(t->ll);
   free(t);
 }
 
@@ -131,6 +135,9 @@ static void free_back_culled(back_culled_t *b) {
   cvec_vec3_free(b->vl);
   cvec_vec4_free(b->tl);
   cvec_float_free(b->t_valid);
+  cvec_float_free(b->lt);
+  cvec_vec4_free(b->ll);
+  cvec_vec3_free(b->tn);
   free(b);
 }
 
@@ -138,6 +145,8 @@ static void free_clipped(clipped_t *c) {
   cvec_vec3_free(c->vl);
   cvec_vec4_free(c->tl);
   cvec_float_free(c->t_valid);
+  cvec_float_free(c->lt);
+  cvec_vec4_free(c->ll);
   free(c);
 }
 
@@ -146,6 +155,9 @@ static void free_projected(projected_t *p) {
   cvec_vec4_free(p->tl);
   cvec_float_free(p->tv);
   cvec_float_free(p->zl);
+  cvec_float_free(p->lt);
+  cvec_vec4_free(p->ll);
+  cvec_vec3_free(p->tn);
   free(p);
 }
 
@@ -223,6 +235,8 @@ static transformed_t *transform(scene_t *s) {
   cvec_vec3 *nvl = cvec_vec3_alloc(s->vl->size);
   cvec_vec4 *ntl = cvec_vec4_copy_alloc(s->tl);
   cvec_vec4 *npl = cvec_vec4_copy_alloc(s->pl);
+  cvec_float *nlt = cvec_float_copy_alloc(s->lt);
+  cvec_vec4 *nll = cvec_vec4_copy_alloc(s->ll);
   /* Apply transform to every vertex */
   for (size_t i = 0; i < s->vl->size; i++) {
     vec3 tmp = apply_transform(s->vl->arr[i], s->tr_s->arr[i], s->tr_r->arr[i],
@@ -235,11 +249,15 @@ static transformed_t *transform(scene_t *s) {
   if (!temp) {
     cvec_vec3_free(nvl);
     cvec_vec4_free(ntl);
+    cvec_float_free(nlt);
+    cvec_vec4_free(nll);
     return NULL;
   }
   temp->tl = ntl;
   temp->vl = nvl;
   temp->pl = npl;
+  temp->lt = nlt;
+  temp->ll = nll;
   return temp;
 }
 
@@ -257,6 +275,10 @@ static back_culled_t *back_face_culling(clipped_t *c) {
   cvec_vec3 *nvl = cvec_vec3_copy_alloc(c->vl);
   cvec_vec4 *ntl = cvec_vec4_copy_alloc(c->tl);
   cvec_float *ntv = cvec_float_copy_alloc(c->t_valid);
+  cvec_float *nlt = cvec_float_copy_alloc(c->lt);
+  cvec_vec4 *nll = cvec_vec4_copy_alloc(c->ll);
+  cvec_vec3 *ntn = cvec_vec3_alloc(ntl->size);
+  ntn->size = ntn->capacity;
   /* Check every valid triangle */
   for (size_t i = 0; i < c->tl->size; i++) {
     if (ntv->arr[i] == 0.0)
@@ -267,6 +289,9 @@ static back_culled_t *back_face_culling(clipped_t *c) {
     vec3 BC = compute_vector(nvl->arr[(int)curr_t.y], nvl->arr[(int)curr_t.z]);
     vec3 CAM = nvl->arr[(int)curr_t.x];
     vec3 CROSS = vector_cross(AB, BC);
+    /* Save triangle normal for later use */
+    float I_N = vector_len(CROSS);
+    ntn->arr[i] = (vec3){CROSS.x / I_N, CROSS.y / I_N, CROSS.z / I_N};
     /* Comp */
     float res = vector_dot(CAM, CROSS);
     if (res > 0) {
@@ -279,11 +304,17 @@ static back_culled_t *back_face_culling(clipped_t *c) {
     cvec_vec3_free(nvl);
     cvec_vec4_free(ntl);
     cvec_float_free(ntv);
+    cvec_float_free(nlt);
+    cvec_vec4_free(nll);
+    cvec_vec3_free(ntn);
     return NULL;
   }
   b->tl = ntl;
   b->vl = nvl;
   b->t_valid = ntv;
+  b->tn = ntn;
+  b->lt = nlt;
+  b->ll = nll;
   return b;
 }
 
@@ -292,6 +323,9 @@ static projected_t *project(back_culled_t *t) {
   cvec_vec4 *new_tl = cvec_vec4_copy_alloc(t->tl);
   cvec_float *new_tv = cvec_float_copy_alloc(t->t_valid);
   cvec_float *new_zl = cvec_float_alloc(t->tl->size);
+  cvec_float *nlt = cvec_float_copy_alloc(t->lt);
+  cvec_vec4 *nll = cvec_vec4_copy_alloc(t->ll);
+  cvec_vec3 *ntn = cvec_vec3_copy_alloc(t->tn);
   /* For every triangle vertex, project its vertices to the canvas */
   for (size_t i = 0; i < t->vl->size; i++) {
     cvec_vec2_push(new_vl, project_vertex(t->vl->arr[i]));
@@ -305,12 +339,18 @@ static projected_t *project(back_culled_t *t) {
     cvec_vec4_free(new_tl);
     cvec_float_free(new_tv);
     cvec_float_free(new_zl);
+    cvec_float_free(nlt);
+    cvec_vec4_free(nll);
+    cvec_vec3_free(ntn);
     return NULL;
   }
   temp->vl = new_vl;
   temp->tl = new_tl;
   temp->tv = new_tv;
   temp->zl = new_zl;
+  temp->lt = nlt;
+  temp->ll = nll;
+  temp->tn = ntn;
   return temp;
 }
 
@@ -347,6 +387,8 @@ static vec3 get_intersect_p(vec4 plane, vec3 A, vec3 B) {
 static clipped_t *clipping(transformed_t *t) {
   cvec_vec3 *nvl = cvec_vec3_copy_alloc(t->vl);
   cvec_vec4 *ntl = cvec_vec4_copy_alloc(t->tl);
+  cvec_float *nlt = cvec_float_copy_alloc(t->lt);
+  cvec_vec4 *nll = cvec_vec4_copy_alloc(t->ll);
   /* Construct valid list in this stage */
   cvec_float *t_valid = cvec_float_alloc(t->tl->size);
   t_valid->size = t_valid->capacity;
@@ -457,13 +499,53 @@ static clipped_t *clipping(transformed_t *t) {
     cvec_vec3_free(nvl);
     cvec_vec4_free(ntl);
     cvec_float_free(t_valid);
+    cvec_float_free(nlt);
+    cvec_vec4_free(nll);
     return NULL;
   }
   cl->tl = ntl;
   cl->vl = nvl;
   cl->t_valid = t_valid;
+  cl->lt = nlt;
+  cl->ll = nll;
   assert(ntl->size == t_valid->size);
   return cl;
+}
+
+static float calc_light_intensity(cvec_float *lt, cvec_vec4 *ll, vec3 P,
+                                  vec3 N) {
+  assert(lt->size == ll->size);
+  float res = 0.0;
+  for (size_t i = 0; i < lt->size; i++) {
+    if (lt->arr[i] == 0.0) {
+      res += ll->arr[i].w;
+    } else if (lt->arr[i] == 1.0) {
+      vec3 L = {ll->arr[i].x, ll->arr[i].y, ll->arr[i].z};
+      float NL = vector_dot(N, L);
+      float ABS_N = vector_len(N);
+      float ABS_L = vector_len(L);
+      float temp = ll->arr[i].w * NL / (ABS_N * ABS_L);
+      if (temp > 0)
+        res += temp;
+    } else if (lt->arr[i] == 2.0) {
+      vec3 L = {ll->arr[i].x, ll->arr[i].y, ll->arr[i].z};
+      L = compute_vector(P, L);
+      float NL = vector_dot(N, L);
+      float ABS_N = vector_len(N);
+      float ABS_L = vector_len(L);
+      float temp = ll->arr[i].w * NL / (ABS_N * ABS_L);
+      if (temp > 0)
+        res += temp;
+    }
+  }
+  return res >= 1.0 ? 1.0 : res;
+}
+
+static uint32_t apply_light(float I, uint32_t c) {
+  uint32_t r = c & 0xff;
+  uint32_t g = (c >> 8) & 0xff;
+  uint32_t b = (c >> 16) & 0xff;
+  return (int)(r * I) | ((int)(g * I) << 8) | ((int)(b * I) << 16);
 }
 
 static rastered_t *rasterize(projected_t *p) {
@@ -544,6 +626,17 @@ static rastered_t *rasterize(projected_t *p) {
       right_z = z02;
     }
 
+    /* Light intensity */
+    /* reconstruct point from projected */
+    vec3 rp0 = {p0.x / (1 * z0), p0.y / (1 * z0), 1 / z0};
+    vec3 rp1 = {p1.x / (1 * z1), p1.y / (1 * z1), 1 / z1};
+    vec3 rp2 = {p2.x / (2 * z2), p2.y / (2 * z2), 2 / z2};
+    vec3 rp = {(rp0.x + rp1.x + rp2.x) / 3, (rp0.y + rp1.y + rp2.y) / 3,
+               (rp0.z + rp1.z + rp2.z) / 3};
+    float rpl = vector_len(rp);
+    rp = (vec3){rp.x / rpl, rp.y / rpl, rp.z / rpl}; /* Normalized */
+    float I = calc_light_intensity(p->lt, p->ll, rp, p->tn->arr[i]);
+
     /* Process every horizontal line */
     for (int y = p0.y; y <= (int)p2.y; y++) {
       int idx = y - (int)p0.y;
@@ -557,7 +650,8 @@ static rastered_t *rasterize(projected_t *p) {
       /* Convert to pixel space */
       for (int i = left_x; i < right_x; i++) {
         int idx = i - left_x;
-        cvec_vec4_push(npl, (vec4){i, y, ztemp->arr[idx], curr_t.w});
+        cvec_vec4_push(npl,
+                       (vec4){i, y, ztemp->arr[idx], apply_light(I, curr_t.w)});
       }
       cvec_float_free(ztemp);
     }

@@ -1,15 +1,19 @@
 #include "util.h"
+#include <math.h>
 
-scene_t *construct_scene(instance_t *inst, int size, transform_t cam) {
+scene_t *construct_scene(instance_t *inst, int isize, transform_t cam,
+                         light_t *l, int lsize) {
   scene_t *s = malloc(sizeof(scene_t));
   s->vl = cvec_vec3_alloc(1);
   s->tl = cvec_vec4_alloc(1);
   s->tr_s = cvec_float_alloc(1);
   s->tr_r = cvec_vec3_alloc(1);
   s->tr_tr = cvec_vec3_alloc(1);
+  s->lt = cvec_float_alloc(1);
+  s->ll = cvec_vec4_alloc(1);
 
   size_t offset = 0;
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < isize; i++) {
     model_t *m = inst[i].m;
     transform_t tr = inst[i].tr;
     /* Append vertices with transformations */
@@ -29,6 +33,23 @@ scene_t *construct_scene(instance_t *inst, int size, transform_t cam) {
       cvec_vec4_push(s->tl, temp);
     }
     offset += m->v->size;
+  }
+
+  for (int i = 0; i < lsize; i++) {
+    switch (l[i].type) {
+    case 0:
+      cvec_float_push(s->lt, 0.0);
+      cvec_vec4_push(s->ll, l[i].p);
+      break;
+    case 1:
+      cvec_float_push(s->lt, 1.0);
+      cvec_vec4_push(s->ll, l[i].p);
+      break;
+    case 2:
+      cvec_float_push(s->lt, 2.0);
+      cvec_vec4_push(s->ll, l[i].p);
+      break;
+    }
   }
   s->cam_r = cam.r;
   s->cam_tr = cam.tr;
@@ -71,4 +92,37 @@ float vector_dot(vec3 A, vec3 B) { return A.x * B.x + A.y * B.y + A.z * B.z; }
 vec3 vector_cross(vec3 A, vec3 B) {
   return (vec3){A.y * B.z - B.y * A.z, A.z * B.x - B.z * A.x,
                 A.x * B.y - B.x * A.y};
+}
+
+float vector_len(vec3 A) { return sqrtf(A.x * A.x + A.y * A.y + A.z * A.z); }
+
+model_t *generate_sphere(int divs, int color) {
+  cvec_vec3 *vl = cvec_vec3_alloc(1);
+  cvec_vec4 *tl = cvec_vec4_alloc(1);
+  float delta_angle = 2.0 * M_PI / divs;
+
+  /* Generate vertices */
+  for (int d = 0; d < divs + 1; d++) {
+    float y = (2.0 / divs) * (d - divs / 2.0);
+    float r = sqrtf(1 - y * y);
+    for (int i = 0; i < divs; i++) {
+      cvec_vec3_push(
+          vl, (vec3){r * cosf(i * delta_angle), y, r * sinf(i * delta_angle)});
+    }
+  }
+
+  /* Generate triangles */
+  for (int d = 0; d < divs; d++) {
+    for (int i = 0; i < divs; i++) {
+      int i0 = d * divs + i;
+      int i1 = (d + 1) * divs + (i + 1) % divs;
+      int i2 = divs * d + (i + 1) % divs;
+      cvec_vec4_push(tl, (vec4){i0, i1, i2, color});
+      cvec_vec4_push(tl, (vec4){i0, i0 + divs, i1, color});
+    }
+  }
+  model_t *m = malloc(sizeof(model_t));
+  m->t = tl;
+  m->v = vl;
+  return m;
 }

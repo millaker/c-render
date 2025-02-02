@@ -20,7 +20,21 @@ typedef struct {
   transform_t tr;
 } instance_t;
 
-scene_t *construct_scene(instance_t *inst, int size, transform_t cam);
+/*
+type 0: ambient
+type 1: directional
+type 2: point
+
+p stores L for type 1 and coordinate for type2
+*/
+typedef struct {
+  int type;
+  vec4 p;
+} light_t;
+
+scene_t *construct_scene(instance_t *inst, int isize, transform_t cam,
+                         light_t *l, int lsize);
+model_t *generate_sphere(int divs, int color);
 
 void swap_vec2(vec2 *, vec2 *);
 void swap_vec3(vec3 *, vec3 *);
@@ -30,5 +44,6 @@ void swap_int(int *, int *);
 vec3 compute_vector(vec3 A, vec3 B);
 vec3 vector_cross(vec3 A, vec3 B);
 float vector_dot(vec3 A, vec3 B);
+float vector_len(vec3 A);
 
 #endif

@@ -29,6 +29,11 @@
     Color
   Vertex:
     3D coordinate
+  Light:
+    Type:
+      0.0 Ambient
+      1.0 Direct (xyz = vector)
+      2.0 Point (xyz = point)
 
   The internal representation concat all the instances into a list.
   To mimic hardware behavior, the input of every stage will be discarded.
@@ -51,6 +56,9 @@ typedef struct {
   vec3 cam_tr;
   /* Plane */
   cvec_vec4 *pl;
+  /* Light */
+  cvec_float *lt;
+  cvec_vec4 *ll;
 } scene_t;
 
 typedef struct {
@@ -60,6 +68,9 @@ typedef struct {
   cvec_vec4 *tl;
   /* Plane list */
   cvec_vec4 *pl;
+  /* Light */
+  cvec_float *lt;
+  cvec_vec4 *ll;
 } transformed_t;
 
 typedef struct {
@@ -68,6 +79,9 @@ typedef struct {
   /* Triangle list */
   cvec_vec4 *tl;
   cvec_float *t_valid;
+  /* Light */
+  cvec_float *lt;
+  cvec_vec4 *ll;
 } clipped_t;
 
 typedef struct {
@@ -76,6 +90,10 @@ typedef struct {
   /* Triangle list */
   cvec_vec4 *tl;
   cvec_float *t_valid;
+  cvec_vec3 *tn;
+  /* Light */
+  cvec_float *lt;
+  cvec_vec4 *ll;
 } back_culled_t;
 
 typedef struct {
@@ -83,10 +101,14 @@ typedef struct {
   cvec_vec2 *vl;
   /* Triangle list */
   cvec_vec4 *tl;
+  cvec_vec3 *tn;
   /* T Valid list*/
   cvec_float *tv;
   /* Z list */
   cvec_float *zl;
+  /* Light */
+  cvec_float *lt;
+  cvec_vec4 *ll;
 } projected_t;
 
 typedef struct {
