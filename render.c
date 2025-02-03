@@ -397,8 +397,9 @@ static clipped_t *clipping(transformed_t *t) {
   }
   for (size_t p = 0; p < t->pl->size; p++) {
     vec4 curr_plane = t->pl->arr[p];
+    size_t old_size = ntl->size;
     /* For every triangle, check against clipping planes */
-    for (size_t i = 0; i < ntl->size; i++) {
+    for (size_t i = 0; i < old_size; i++) {
       vec4 curr_t = ntl->arr[i];
       vec3 *curr_vl = nvl->arr;
       vec3 p_a = curr_vl[(int)curr_t.x];
