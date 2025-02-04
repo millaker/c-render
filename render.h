@@ -18,6 +18,7 @@
     Camera position (cam)
   Instance:
     Vertex list (vl)
+    Vertex texture (vt)
     Triangle list (tl)
     Transform
   Transform:
@@ -29,6 +30,8 @@
     Color
   Vertex:
     3D coordinate
+  Vertex texture:
+    2D coordinate with valid bit
   Light:
     Type:
       0.0 Ambient
@@ -47,6 +50,8 @@ typedef struct {
   cvec_vec3 *vl;
   /* Triangle list */
   cvec_vec4 *tl;
+  cvec_vec4 *tt;
+  cvec_vec2 *txl;
   /* Vertex transform info */
   cvec_float *tr_s;
   cvec_vec3 *tr_r;
@@ -59,6 +64,9 @@ typedef struct {
   /* Light */
   cvec_float *lt;
   cvec_vec4 *ll;
+  /* Texture */
+  uint32_t **tx;
+  vec2 *tx_dim;
 } scene_t;
 
 typedef struct {
@@ -66,11 +74,16 @@ typedef struct {
   cvec_vec3 *vl;
   /* Triangle list */
   cvec_vec4 *tl;
+  cvec_vec4 *tt;
+  cvec_vec2 *txl;
   /* Plane list */
   cvec_vec4 *pl;
   /* Light */
   cvec_float *lt;
   cvec_vec4 *ll;
+  /* Texture */
+  uint32_t **tx;
+  vec2 *tx_dim;
 } transformed_t;
 
 typedef struct {
@@ -79,9 +92,14 @@ typedef struct {
   /* Triangle list */
   cvec_vec4 *tl;
   cvec_float *t_valid;
+  cvec_vec4 *tt;
+  cvec_vec2 *txl;
   /* Light */
   cvec_float *lt;
   cvec_vec4 *ll;
+  /* Texture */
+  uint32_t **tx;
+  vec2 *tx_dim;
 } clipped_t;
 
 typedef struct {
@@ -91,9 +109,14 @@ typedef struct {
   cvec_vec4 *tl;
   cvec_float *t_valid;
   cvec_vec3 *tn;
+  cvec_vec4 *tt;
+  cvec_vec2 *txl;
   /* Light */
   cvec_float *lt;
   cvec_vec4 *ll;
+  /* Texture */
+  uint32_t **tx;
+  vec2 *tx_dim;
 } back_culled_t;
 
 typedef struct {
@@ -102,6 +125,8 @@ typedef struct {
   /* Triangle list */
   cvec_vec4 *tl;
   cvec_vec3 *tn;
+  cvec_vec4 *tt;
+  cvec_vec2 *txl;
   /* T Valid list*/
   cvec_float *tv;
   /* Z list */
@@ -109,6 +134,9 @@ typedef struct {
   /* Light */
   cvec_float *lt;
   cvec_vec4 *ll;
+  /* Texture */
+  uint32_t **tx;
+  vec2 *tx_dim;
 } projected_t;
 
 typedef struct {

@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define CANVAS_HEIGHT 640
-#define CANVAS_WIDTH 640
+#define CANVAS_HEIGHT 1080
+#define CANVAS_WIDTH 1080
 
 int display_init();
 void display_put_pixel(int x, int y, uint32_t color);

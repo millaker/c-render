@@ -7,6 +7,8 @@
 typedef struct {
   cvec_vec3 *v;
   cvec_vec4 *t;
+  cvec_vec2 *vt;
+  cvec_vec4 *tt; /* x,y,z idx and valid */
 } model_t;
 
 typedef struct {
@@ -18,6 +20,8 @@ typedef struct {
 typedef struct {
   model_t *m;
   transform_t tr;
+  uint32_t *tx;
+  vec2 tx_dim;
 } instance_t;
 
 /*
@@ -37,6 +41,7 @@ scene_t *construct_scene(instance_t *inst, int isize, transform_t cam,
 model_t *generate_sphere(int divs, int color);
 model_t *load_model(char *file);
 void free_model(model_t *m);
+uint32_t *load_texture(char *file, vec2 *dim);
 
 void swap_vec2(vec2 *, vec2 *);
 void swap_vec3(vec3 *, vec3 *);

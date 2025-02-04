@@ -112,6 +112,8 @@ void draw_filled_triangle(vec2 p0, vec2 p1, vec2 p2, uint32_t color) {
 
 static void free_scene(scene_t *s) {
   cvec_vec3_free(s->vl);
+  cvec_vec4_free(s->tt);
+  cvec_vec2_free(s->txl);
   cvec_vec4_free(s->tl);
   cvec_float_free(s->tr_s);
   cvec_vec3_free(s->tr_r);
@@ -124,6 +126,8 @@ static void free_scene(scene_t *s) {
 
 static void free_transformed(transformed_t *t) {
   cvec_vec3_free(t->vl);
+  cvec_vec4_free(t->tt);
+  cvec_vec2_free(t->txl);
   cvec_vec4_free(t->tl);
   cvec_vec4_free(t->pl);
   cvec_float_free(t->lt);
@@ -133,6 +137,8 @@ static void free_transformed(transformed_t *t) {
 
 static void free_back_culled(back_culled_t *b) {
   cvec_vec3_free(b->vl);
+  cvec_vec4_free(b->tt);
+  cvec_vec2_free(b->txl);
   cvec_vec4_free(b->tl);
   cvec_float_free(b->t_valid);
   cvec_float_free(b->lt);
@@ -143,6 +149,8 @@ static void free_back_culled(back_culled_t *b) {
 
 static void free_clipped(clipped_t *c) {
   cvec_vec3_free(c->vl);
+  cvec_vec4_free(c->tt);
+  cvec_vec2_free(c->txl);
   cvec_vec4_free(c->tl);
   cvec_float_free(c->t_valid);
   cvec_float_free(c->lt);
@@ -152,6 +160,8 @@ static void free_clipped(clipped_t *c) {
 
 static void free_projected(projected_t *p) {
   cvec_vec2_free(p->vl);
+  cvec_vec4_free(p->tt);
+  cvec_vec2_free(p->txl);
   cvec_vec4_free(p->tl);
   cvec_float_free(p->tv);
   cvec_float_free(p->zl);
@@ -233,7 +243,9 @@ vec3 apply_cam_transform(vec3 p, vec3 r, vec3 tr) {
 
 static transformed_t *transform(scene_t *s) {
   cvec_vec3 *nvl = cvec_vec3_alloc(s->vl->size);
+  cvec_vec4 *ntt = cvec_vec4_copy_alloc(s->tt);
   cvec_vec4 *ntl = cvec_vec4_copy_alloc(s->tl);
+  cvec_vec2 *ntxl = cvec_vec2_copy_alloc(s->txl);
   cvec_vec4 *npl = cvec_vec4_copy_alloc(s->pl);
   cvec_float *nlt = cvec_float_copy_alloc(s->lt);
   cvec_vec4 *nll = cvec_vec4_copy_alloc(s->ll);
@@ -244,20 +256,27 @@ static transformed_t *transform(scene_t *s) {
     tmp = apply_cam_transform(tmp, s->cam_r, s->cam_tr);
     cvec_vec3_push(nvl, tmp);
   }
-  free_scene(s);
   transformed_t *temp = malloc(sizeof(transformed_t));
   if (!temp) {
     cvec_vec3_free(nvl);
+    cvec_vec4_free(ntt);
+    cvec_vec2_free(ntxl);
     cvec_vec4_free(ntl);
     cvec_float_free(nlt);
     cvec_vec4_free(nll);
+    free_scene(s);
     return NULL;
   }
   temp->tl = ntl;
+  temp->tt = ntt;
+  temp->txl = ntxl;
   temp->vl = nvl;
   temp->pl = npl;
   temp->lt = nlt;
   temp->ll = nll;
+  temp->tx = s->tx;
+  temp->tx_dim = s->tx_dim;
+  free_scene(s);
   return temp;
 }
 
@@ -273,6 +292,8 @@ static vec2 project_vertex(vec3 v) {
  */
 static back_culled_t *back_face_culling(clipped_t *c) {
   cvec_vec3 *nvl = cvec_vec3_copy_alloc(c->vl);
+  cvec_vec4 *ntt = cvec_vec4_copy_alloc(c->tt);
+  cvec_vec2 *ntxl = cvec_vec2_copy_alloc(c->txl);
   cvec_vec4 *ntl = cvec_vec4_copy_alloc(c->tl);
   cvec_float *ntv = cvec_float_copy_alloc(c->t_valid);
   cvec_float *nlt = cvec_float_copy_alloc(c->lt);
@@ -298,28 +319,37 @@ static back_culled_t *back_face_culling(clipped_t *c) {
       ntv->arr[i] = 0.0;
     }
   }
-  free_clipped(c);
   back_culled_t *b = malloc(sizeof(back_culled_t));
   if (!b) {
     cvec_vec3_free(nvl);
+    cvec_vec4_free(ntt);
+    cvec_vec2_free(ntxl);
     cvec_vec4_free(ntl);
     cvec_float_free(ntv);
     cvec_float_free(nlt);
     cvec_vec4_free(nll);
     cvec_vec3_free(ntn);
+    free_clipped(c);
     return NULL;
   }
   b->tl = ntl;
+  b->tt = ntt;
+  b->txl = ntxl;
   b->vl = nvl;
   b->t_valid = ntv;
   b->tn = ntn;
   b->lt = nlt;
   b->ll = nll;
+  b->tx = c->tx;
+  b->tx_dim = c->tx_dim;
+  free_clipped(c);
   return b;
 }
 
 static projected_t *project(back_culled_t *t) {
   cvec_vec2 *new_vl = cvec_vec2_alloc(t->vl->size);
+  cvec_vec4 *ntt = cvec_vec4_copy_alloc(t->tt);
+  cvec_vec2 *ntxl = cvec_vec2_copy_alloc(t->txl);
   cvec_vec4 *new_tl = cvec_vec4_copy_alloc(t->tl);
   cvec_float *new_tv = cvec_float_copy_alloc(t->t_valid);
   cvec_float *new_zl = cvec_float_alloc(t->tl->size);
@@ -332,25 +362,32 @@ static projected_t *project(back_culled_t *t) {
     cvec_float_push(new_zl, 1 / t->vl->arr[i].z);
   }
   assert(new_vl->size == new_zl->size);
-  free_back_culled(t);
   projected_t *temp = malloc(sizeof(projected_t));
   if (!temp) {
     cvec_vec2_free(new_vl);
+    cvec_vec4_free(ntt);
+    cvec_vec2_free(ntxl);
     cvec_vec4_free(new_tl);
     cvec_float_free(new_tv);
     cvec_float_free(new_zl);
     cvec_float_free(nlt);
     cvec_vec4_free(nll);
     cvec_vec3_free(ntn);
+    free_back_culled(t);
     return NULL;
   }
   temp->vl = new_vl;
+  temp->tt = ntt;
+  temp->txl = ntxl;
   temp->tl = new_tl;
   temp->tv = new_tv;
   temp->zl = new_zl;
   temp->lt = nlt;
   temp->ll = nll;
   temp->tn = ntn;
+  temp->tx = t->tx;
+  temp->tx_dim = t->tx_dim;
+  free_back_culled(t);
   return temp;
 }
 
@@ -386,6 +423,8 @@ static vec3 get_intersect_p(vec4 plane, vec3 A, vec3 B) {
 
 static clipped_t *clipping(transformed_t *t) {
   cvec_vec3 *nvl = cvec_vec3_copy_alloc(t->vl);
+  cvec_vec4 *ntt = cvec_vec4_copy_alloc(t->tt);
+  cvec_vec2 *ntxl = cvec_vec2_copy_alloc(t->txl);
   cvec_vec4 *ntl = cvec_vec4_copy_alloc(t->tl);
   cvec_float *nlt = cvec_float_copy_alloc(t->lt);
   cvec_vec4 *nll = cvec_vec4_copy_alloc(t->ll);
@@ -476,6 +515,7 @@ static clipped_t *clipping(transformed_t *t) {
         cvec_vec3_push(nvl, np1);
         int tmp = nvl->size;
         cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 2, tmp - 1, curr_t.w});
+        cvec_vec4_push(ntt, (vec4){0, 0, 0, -1});
         cvec_float_push(t_valid, 1.0);
       } else {
         /* Two inside */
@@ -489,27 +529,36 @@ static clipped_t *clipping(transformed_t *t) {
         int tmp = nvl->size;
         cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 2, tmp - 1, curr_t.w});
         cvec_vec4_push(ntl, (vec4){in_idx_p0, tmp - 1, in_idx_p1, curr_t.w});
+        cvec_vec4_push(ntt, (vec4){0, 0, 0, -1});
+        cvec_vec4_push(ntt, (vec4){0, 0, 0, -1});
         cvec_float_push(t_valid, 1.0);
         cvec_float_push(t_valid, 1.0);
       }
     }
   }
   assert(t_valid->size == ntl->size);
-  free_transformed(t);
   clipped_t *cl = malloc(sizeof(clipped_t));
   if (!cl) {
     cvec_vec3_free(nvl);
+    cvec_vec4_free(ntt);
     cvec_vec4_free(ntl);
+    cvec_vec2_free(ntxl);
     cvec_float_free(t_valid);
     cvec_float_free(nlt);
     cvec_vec4_free(nll);
+    free_transformed(t);
     return NULL;
   }
   cl->tl = ntl;
+  cl->tt = ntt;
+  cl->txl = ntxl;
   cl->vl = nvl;
   cl->t_valid = t_valid;
   cl->lt = nlt;
   cl->ll = nll;
+  cl->tx = t->tx;
+  cl->tx_dim = t->tx_dim;
+  free_transformed(t);
   assert(ntl->size == t_valid->size);
   return cl;
 }
@@ -592,6 +641,13 @@ static rastered_t *rasterize(projected_t *p) {
       swap_int(&idx_z, &idx_y);
     }
 
+    int tx_idx0 = p->tt->arr[i].x;
+    int tx_idx1 = p->tt->arr[i].y;
+    int tx_idx2 = p->tt->arr[i].z;
+    extern int texture_loaded;
+    int has_tx = p->tt->arr[i].w >= 0 && texture_loaded;
+    int tt_idx = p->tt->arr[i].w;
+
     /* Interpolate x values for each edge */
     cvec_float *x01 = interpolate(p0.y, p0.x, p1.y, p1.x);
     cvec_float *x02 = interpolate(p0.y, p0.x, p2.y, p2.x);
@@ -629,20 +685,77 @@ static rastered_t *rasterize(projected_t *p) {
     cvec_float_free(z12);
     assert(z012->size == x012->size);
 
+    /* Interpolate tx u,v values for each edge */
+    float u0, u1, u2, v0, v1, v2;
+    cvec_float *u01, *u02, *u12, *u012;
+    cvec_float *v01, *v02, *v12, *v012;
+    if (has_tx) {
+      u0 = p->txl->arr[tx_idx0].x;
+      u1 = p->txl->arr[tx_idx1].x;
+      u2 = p->txl->arr[tx_idx2].x;
+      u0 = u0 < 0.0 ? (u0 + 1) * z0 : u0 * z0;
+      u1 = u1 < 0.0 ? (u1 + 1) * z1 : u1 * z1;
+      u2 = u2 < 0.0 ? (u2 + 1) * z2 : u2 * z2;
+      u01 = interpolate(p0.y, u0, p1.y, u1);
+      u02 = interpolate(p0.y, u0, p2.y, u2);
+      u12 = interpolate(p1.y, u1, p2.y, u2);
+      u012 = cvec_float_alloc(u01->size + u12->size - 1);
+      u012->size = u012->capacity;
+      for (size_t i = 0; i < u01->size - 1; i++) {
+        u012->arr[i] = u01->arr[i];
+      }
+      for (size_t i = u01->size - 1; i < u012->size; i++) {
+        u012->arr[i] = u12->arr[i - (u01->size - 1)];
+      }
+      cvec_float_free(u01);
+      cvec_float_free(u12);
+      assert(u012->size == x012->size);
+
+      v0 = p->txl->arr[tx_idx0].y;
+      v0 = v0 < 0.0 ? (v0 + 1) * z0 : v0 * z0;
+      v1 = p->txl->arr[tx_idx1].y;
+      v1 = v1 < 0.0 ? (v1 + 1) * z1 : v1 * z1;
+      v2 = p->txl->arr[tx_idx2].y;
+      v2 = v2 < 0.0 ? (v2 + 1) * z2 : v2 * z2;
+      v01 = interpolate(p0.y, v0, p1.y, v1);
+      v02 = interpolate(p0.y, v0, p2.y, v2);
+      v12 = interpolate(p1.y, v1, p2.y, v2);
+      v012 = cvec_float_alloc(v01->size + v12->size - 1);
+      v012->size = v012->capacity;
+      for (size_t i = 0; i < v01->size - 1; i++) {
+        v012->arr[i] = v01->arr[i];
+      }
+      for (size_t i = v01->size - 1; i < v012->size; i++) {
+        v012->arr[i] = v12->arr[i - (v01->size - 1)];
+      }
+      cvec_float_free(v01);
+      cvec_float_free(v12);
+      assert(v012->size == x012->size);
+    }
+
     /* Raster pixels between the two sides */
     /* Determine left right */
     int m = x02->size / 2;
-    cvec_float *left, *right, *left_z, *right_z;
+    cvec_float *left, *right, *left_z, *right_z, *left_u, *right_u, *left_v,
+        *right_v;
     if (x02->arr[m] < x012->arr[m]) {
       left = x02;
       right = x012;
       left_z = z02;
       right_z = z012;
+      left_u = u02;
+      right_u = u012;
+      left_v = v02;
+      right_v = v012;
     } else {
       left = x012;
       right = x02;
       left_z = z012;
       right_z = z02;
+      left_u = u012;
+      right_u = u02;
+      left_v = v012;
+      right_v = v02;
     }
 
     /* Light intensity */
@@ -655,7 +768,7 @@ static rastered_t *rasterize(projected_t *p) {
     float rpl = vector_len(rp);
     rp = (vec3){rp.x / rpl, rp.y / rpl, rp.z / rpl}; /* Normalized */
     float I = calc_light_intensity(p->lt, p->ll, rp, p->tn->arr[i]);
-    uint32_t c = apply_light(I, curr_t.w);
+    uint32_t c_t = apply_light(I, curr_t.w);
 
     /* Process every horizontal line */
     for (int y = p0.y; y <= (int)p2.y; y++) {
@@ -667,19 +780,45 @@ static rastered_t *rasterize(projected_t *p) {
       cvec_float *ztemp =
           interpolate(left_x, left_z->arr[idx], right_x, right_z->arr[idx]);
       assert(ztemp->size == right_x - left_x + 1);
+      cvec_float *utemp = NULL, *vtemp = NULL;
+      if (has_tx) {
+        utemp =
+            interpolate(left_x, left_u->arr[idx], right_x, right_u->arr[idx]);
+        vtemp =
+            interpolate(left_x, left_v->arr[idx], right_x, right_v->arr[idx]);
+      }
+
       /* Convert to pixel space */
       for (int i = left_x; i < right_x; i++) {
         int idx = i - left_x;
+        uint32_t c = c_t;
+        if (has_tx) {
+          uint32_t tx = utemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].x;
+          uint32_t ty = vtemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].y;
+          int mapid = ty * p->tx_dim[tt_idx].x + tx;
+          c = apply_light(I, p->tx[tt_idx][mapid]);
+        }
         output(i, y, ztemp->arr[idx], c);
       }
       cvec_float_free(ztemp);
+      if (has_tx) {
+        cvec_float_free(vtemp);
+        cvec_float_free(utemp);
+      }
     }
-
     cvec_float_free(x02);
     cvec_float_free(z02);
     cvec_float_free(z012);
     cvec_float_free(x012);
+    if (has_tx) {
+      cvec_float_free(u02);
+      cvec_float_free(v02);
+      cvec_float_free(u012);
+      cvec_float_free(v012);
+    }
   }
+  free(p->tx);
+  free(p->tx_dim);
   free_projected(p);
   return NULL;
 }
