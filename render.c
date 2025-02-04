@@ -593,10 +593,10 @@ static float calc_light_intensity(cvec_float *lt, cvec_vec4 *ll, vec3 P,
 }
 
 static uint32_t apply_light(float I, uint32_t c) {
-  uint32_t r = c & 0xff;
+  uint32_t b = c & 0xff;
   uint32_t g = (c >> 8) & 0xff;
-  uint32_t b = (c >> 16) & 0xff;
-  return (int)(r * I) | ((int)(g * I) << 8) | ((int)(b * I) << 16);
+  uint32_t r = (c >> 16) & 0xff;
+  return (int)(b * I) | ((int)(g * I) << 8) | ((int)(r * I) << 16);
 }
 
 static void output(int x, int y, float z, uint32_t color) {
@@ -624,26 +624,30 @@ static rastered_t *rasterize(projected_t *p) {
       continue;
     vec4 curr_t = p->tl->arr[i];
     int idx_x = curr_t.x, idx_y = curr_t.y, idx_z = curr_t.z;
+    int tx_idx0 = p->tt->arr[i].x;
+    int tx_idx1 = p->tt->arr[i].y;
+    int tx_idx2 = p->tt->arr[i].z;
     vec2 p0 = p->vl->arr[idx_x];
     vec2 p1 = p->vl->arr[idx_y];
     vec2 p2 = p->vl->arr[idx_z];
+    //printf("%d/%d %d/%d %d/%d\n", idx_x, tx_idx0, idx_y, tx_idx1, idx_z, tx_idx2);
     /* Sort points with y, p0 has smallest y */
     if (p1.y < p0.y) {
       swap_vec2(&p1, &p0);
       swap_int(&idx_y, &idx_x);
+      swap_int(&tx_idx1, &tx_idx0);
     }
     if (p2.y < p0.y) {
       swap_vec2(&p2, &p0);
       swap_int(&idx_z, &idx_x);
+      swap_int(&tx_idx2, &tx_idx0);
     }
     if (p2.y < p1.y) {
       swap_vec2(&p1, &p2);
       swap_int(&idx_z, &idx_y);
+      swap_int(&tx_idx2, &tx_idx1);
     }
 
-    int tx_idx0 = p->tt->arr[i].x;
-    int tx_idx1 = p->tt->arr[i].y;
-    int tx_idx2 = p->tt->arr[i].z;
     extern int texture_loaded;
     int has_tx = p->tt->arr[i].w >= 0 && texture_loaded;
     int tt_idx = p->tt->arr[i].w;
@@ -693,9 +697,9 @@ static rastered_t *rasterize(projected_t *p) {
       u0 = p->txl->arr[tx_idx0].x;
       u1 = p->txl->arr[tx_idx1].x;
       u2 = p->txl->arr[tx_idx2].x;
-      u0 = u0 < 0.0 ? (u0 + 1) * z0 : u0 * z0;
-      u1 = u1 < 0.0 ? (u1 + 1) * z1 : u1 * z1;
-      u2 = u2 < 0.0 ? (u2 + 1) * z2 : u2 * z2;
+      u0 = (u0 < 0 ? (u0 - floor(u0)) : u0) * z0;
+      u1 = (u1 < 0 ? (u1 - floor(u1)) : u1) * z1;
+      u2 = (u2 < 0 ? (u2 - floor(u2)) : u2) * z2;
       u01 = interpolate(p0.y, u0, p1.y, u1);
       u02 = interpolate(p0.y, u0, p2.y, u2);
       u12 = interpolate(p1.y, u1, p2.y, u2);
@@ -712,11 +716,11 @@ static rastered_t *rasterize(projected_t *p) {
       assert(u012->size == x012->size);
 
       v0 = p->txl->arr[tx_idx0].y;
-      v0 = v0 < 0.0 ? (v0 + 1) * z0 : v0 * z0;
       v1 = p->txl->arr[tx_idx1].y;
-      v1 = v1 < 0.0 ? (v1 + 1) * z1 : v1 * z1;
       v2 = p->txl->arr[tx_idx2].y;
-      v2 = v2 < 0.0 ? (v2 + 1) * z2 : v2 * z2;
+      v0 = (v0 < 0 ? (v0 - floor(v0)) : v0) * z0;
+      v1 = (v1 < 0 ? (v1 - floor(v1)) : v1) * z1;
+      v2 = (v2 < 0 ? (v2 - floor(v2)) : v2) * z2;
       v01 = interpolate(p0.y, v0, p1.y, v1);
       v02 = interpolate(p0.y, v0, p2.y, v2);
       v12 = interpolate(p1.y, v1, p2.y, v2);
@@ -795,6 +799,10 @@ static rastered_t *rasterize(projected_t *p) {
         if (has_tx) {
           uint32_t tx = utemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].x;
           uint32_t ty = vtemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].y;
+          tx = tx >= p->tx_dim[tt_idx].x ? tx - 1: tx;
+          ty = ty >= p->tx_dim[tt_idx].x ? ty - 1: ty;
+          tx = tx < 0 ? 0 : tx;
+          ty = ty < 0 ? 0 : ty;
           int mapid = ty * p->tx_dim[tt_idx].x + tx;
           c = apply_light(I, p->tx[tt_idx][mapid]);
         }

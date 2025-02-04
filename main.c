@@ -23,6 +23,14 @@ static vec4 unicube_triangles[] = {
     {4, 5, 1, RED}, {4, 1, 0, RED}, {2, 6, 7, RED}, {2, 7, 3, RED},
 };
 
+static vec3 temp_vertices[] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}};
+
+static vec4 temp_tri[] = {{0, 2, 1, RED}, {2, 3, 1, RED}};
+
+static vec4 temp_tt[] = {{0, 2, 1, 1.0}, {2, 3, 1, 1.0}};
+
+static vec2 temp_vt[] = {{0.0, 1.0}, {1.0, 1.0}, {0.0, 0.0}, {1.0, 0.0}};
+
 int main(int argc, char *argv[]) {
   display_init();
   if (argc != 1) {
@@ -34,7 +42,7 @@ int main(int argc, char *argv[]) {
     }
     light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
     instance_t inst[] = {
-        {m, {2.0, {-120, 0, 0}, {0.0, 0.0, 5}}, tx, dim},
+        {m, {1.0, {0, 60, 0}, {0.0, 0.0, 5}}, tx, dim},
     };
     scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
                                  (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
@@ -59,11 +67,19 @@ int main(int argc, char *argv[]) {
   model_t *m = malloc(sizeof(model_t));
   m->t = cvec_vec4_alloc(12);
   m->v = cvec_vec3_alloc(8);
-  for (int i = 0; i < sizeof(cube_triangles) / sizeof(vec4); i++) {
-    cvec_vec4_push(m->t, cube_triangles[i]);
+  m->tt = cvec_vec4_alloc(4);
+  m->vt = cvec_vec2_alloc(4);
+  for (int i = 0; i < sizeof(temp_tri) / sizeof(vec4); i++) {
+    cvec_vec4_push(m->t, temp_tri[i]);
   }
-  for (int i = 0; i < sizeof(cube_vertices) / sizeof(vec3); i++) {
-    cvec_vec3_push(m->v, cube_vertices[i]);
+  for (int i = 0; i < sizeof(temp_vertices) / sizeof(vec3); i++) {
+    cvec_vec3_push(m->v, temp_vertices[i]);
+  }
+  for (int i = 0; i < sizeof(temp_tt) / sizeof(vec4); i++) {
+    cvec_vec4_push(m->tt, temp_tt[i]);
+  }
+  for (int i = 0; i < sizeof(temp_vt) / sizeof(vec2); i++) {
+    cvec_vec2_push(m->vt, temp_vt[i]);
   }
 
   model_t *um = malloc(sizeof(model_t));
@@ -77,29 +93,30 @@ int main(int argc, char *argv[]) {
   model_t *sm1 = generate_sphere(30, CYAN);
 
   /* Temp light */
-  light_t l[] = {
-      {0, {0, 0, 0, 0.1}},
-      {1, {1, 0, -1, 0.3}},
-      {2, {-2, 0, -2, 0.8}},
-  };
+  light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
+
+  vec2 dim;
+  uint32_t *tx = load_texture("models/spot_texture.png", &dim);
 
   /* Construct instances */
   instance_t cubes[] = {
-      {m, {0.5, {-30, -30, -30}, {1.5, -1.5, 5}}},
-      {um, {0.5, {0, -30, -30}, {1.5, 1.5, 5}}},
-      {sm, {1.5, {0, 0, 0}, {-1.5, 0, 7}}},
-      {sm1, {5.0, {-45, 0, 0}, {0, 0, 12}}},
+      {m, {1.0, {0, 0, 0}, {0, 0, 7}}, tx, dim},
+      {m, {1.0, {0, 10, 0}, {-1, 1, 7}}, tx, dim},
+      {m, {1.0, {-10, 20, 0}, {-2, -1, 7}}, tx, dim},
+      {m, {1.0, {-20, 30, 0}, {-3, 1, 7}}, tx, dim},
+      {m, {1.0, {20, 30, 0}, {1, 1, 7}}, tx, dim},
+      {m, {1.0, {30, 100, 0}, {2, 0, 7}}, tx, dim},
   };
   scene_t *s = construct_scene(cubes, sizeof(cubes) / sizeof(instance_t),
                                (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
                                sizeof(l) / sizeof(l[0]));
   /* temp plane list */
   cvec_vec4 *pl = cvec_vec4_alloc(5);
-  cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
-  cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
-  cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
-  cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
-  cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
+  // cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
+  // cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+  // cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+  // cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
+  // cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
   s->pl = pl;
   render(s);
   cvec_vec4_free(m->t);

@@ -52,7 +52,7 @@ scene_t *construct_scene(instance_t *inst, int isize, transform_t cam,
       cvec_vec4_push(s->tt, ttemp);
     }
 
-    voffset += m->tt->size;
+    voffset += m->vt->size;
     offset += m->v->size;
     /* Assign texture map */
     s->tx[it] = inst[it].tx;
