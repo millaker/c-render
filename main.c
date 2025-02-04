@@ -27,9 +27,14 @@ int main(int argc, char *argv[]) {
   display_init();
   if (argc != 1) {
     model_t *m = load_model(argv[1]);
-    light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {1, 0, -1, 0.8}}};
+    uint32_t *tx = NULL;
+    vec2 dim = {0};
+    if (argc == 3) {
+      tx = load_texture(argv[2], &dim);
+    }
+    light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
     instance_t inst[] = {
-        {m, {1.0, {0, 150, 0}, {0.0, 0.0, 20}}},
+        {m, {2.0, {-120, 0, 0}, {0.0, 0.0, 5}}, tx, dim},
     };
     scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
                                  (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
@@ -46,6 +51,7 @@ int main(int argc, char *argv[]) {
     display_show();
     display_close();
     free_model(m);
+    free(tx);
     printf("Render model successfully\n");
     return 0;
   }
