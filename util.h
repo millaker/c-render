@@ -42,6 +42,7 @@ model_t *generate_sphere(int divs, int color);
 model_t *load_model(char *file);
 void free_model(model_t *m);
 uint32_t *load_texture(char *file, vec2 *dim);
+cvec_vec4 *generate_fov90_planes();
 
 void swap_vec2(vec2 *, vec2 *);
 void swap_vec3(vec3 *, vec3 *);

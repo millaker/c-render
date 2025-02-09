@@ -2,139 +2,71 @@
 #include "render.h"
 #include "types.h"
 #include "util.h"
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-static vec3 cube_vertices[] = {
-    {1, 1, 1},  {-1, 1, 1},  {-1, -1, 1},  {1, -1, 1},
-    {1, 1, -1}, {-1, 1, -1}, {-1, -1, -1}, {1, -1, -1},
-};
-
-static vec4 cube_triangles[] = {
-    {0, 1, 2, RED},    {0, 2, 3, RED},    {4, 0, 3, GREEN},  {4, 3, 7, GREEN},
-    {5, 4, 7, BLUE},   {5, 7, 6, BLUE},   {1, 5, 6, YELLOW}, {1, 6, 2, YELLOW},
-    {4, 5, 1, PURPLE}, {4, 1, 0, PURPLE}, {2, 6, 7, CYAN},   {2, 7, 3, CYAN},
-};
-
-static vec4 unicube_triangles[] = {
-    {0, 1, 2, RED}, {0, 2, 3, RED}, {4, 0, 3, RED}, {4, 3, 7, RED},
-    {5, 4, 7, RED}, {5, 7, 6, RED}, {1, 5, 6, RED}, {1, 6, 2, RED},
-    {4, 5, 1, RED}, {4, 1, 0, RED}, {2, 6, 7, RED}, {2, 7, 3, RED},
-};
-
-static vec3 temp_vertices[] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}};
-
-static vec4 temp_tri[] = {{0, 2, 1, RED}, {2, 3, 1, RED}};
-
-static vec4 temp_tt[] = {{0, 2, 1, 1.0}, {2, 3, 1, 1.0}};
-
-static vec2 temp_vt[] = {{0.0, 1.0}, {1.0, 1.0}, {0.0, 0.0}, {1.0, 0.0}};
-
-int main(int argc, char *argv[]) {
+void demo(char *mfile, char *tfile) {
   display_init();
-  if (argc != 1) {
-    model_t *m = load_model(argv[1]);
-    uint32_t *tx = NULL;
-    vec2 dim = {0};
-    if (argc == 3) {
-      tx = load_texture(argv[2], &dim);
-    }
-    light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
-    instance_t inst[] = {
-        {m, {1.0, {0, 60, 0}, {0.0, 0.0, 5}}, tx, dim},
-    };
-    scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
-                                 (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
-                                 sizeof(l) / sizeof(l[0]));
-    /* temp plane list */
-    cvec_vec4 *pl = cvec_vec4_alloc(5);
-    cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
-    cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
-    cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
-    cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
-    cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
-    s->pl = pl;
-    render(s);
-    display_show();
-    display_close();
-    free_model(m);
-    free(tx);
-    printf("Render model successfully\n");
-    return 0;
+  model_t *m = load_model(mfile);
+  uint32_t *tx = NULL;
+  vec2 dim = {0};
+  if (tfile) {
+    tx = load_texture(tfile, &dim);
   }
-  /* Construct cube model */
-  model_t *m = malloc(sizeof(model_t));
-  m->t = cvec_vec4_alloc(12);
-  m->v = cvec_vec3_alloc(8);
-  m->tt = cvec_vec4_alloc(4);
-  m->vt = cvec_vec2_alloc(4);
-  for (int i = 0; i < sizeof(temp_tri) / sizeof(vec4); i++) {
-    cvec_vec4_push(m->t, temp_tri[i]);
-  }
-  for (int i = 0; i < sizeof(temp_vertices) / sizeof(vec3); i++) {
-    cvec_vec3_push(m->v, temp_vertices[i]);
-  }
-  for (int i = 0; i < sizeof(temp_tt) / sizeof(vec4); i++) {
-    cvec_vec4_push(m->tt, temp_tt[i]);
-  }
-  for (int i = 0; i < sizeof(temp_vt) / sizeof(vec2); i++) {
-    cvec_vec2_push(m->vt, temp_vt[i]);
-  }
-
-  model_t *um = malloc(sizeof(model_t));
-  um->v = m->v;
-  um->t = cvec_vec4_alloc(12);
-  for (int i = 0; i < sizeof(unicube_triangles) / sizeof(vec4); i++) {
-    cvec_vec4_push(um->t, unicube_triangles[i]);
-  }
-
-  model_t *sm = generate_sphere(30, RED);
-  model_t *sm1 = generate_sphere(30, CYAN);
-
-  /* Temp light */
   light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
-
-  vec2 dim;
-  uint32_t *tx = load_texture("models/spot_texture.png", &dim);
-
-  /* Construct instances */
-  instance_t cubes[] = {
-      {m, {1.0, {0, 0, 0}, {0, 0, 7}}, tx, dim},
-      {m, {1.0, {0, 10, 0}, {-1, 1, 7}}, tx, dim},
-      {m, {1.0, {-10, 20, 0}, {-2, -1, 7}}, tx, dim},
-      {m, {1.0, {-20, 30, 0}, {-3, 1, 7}}, tx, dim},
-      {m, {1.0, {20, 30, 0}, {1, 1, 7}}, tx, dim},
-      {m, {1.0, {30, 100, 0}, {2, 0, 7}}, tx, dim},
+  instance_t inst[] = {
+      {m, {1.0, {0, 45, 0}, {1.0, 0.0, 5}}, tx, dim},
+      {m, {1.0, {0, -45, 0}, {-0.5, 0.0, 7}}, tx, dim},
+      {m, {1.0, {0, 35, 0}, {-1.5, 0.0, 5}}, tx, dim},
+      {m, {1.0, {0, 25, 0}, {2.5, 0.0, 8}}, tx, dim},
+      {m, {1.0, {0, 65, 0}, {1.5, 0.0, 15}}, tx, dim},
   };
-  scene_t *s = construct_scene(cubes, sizeof(cubes) / sizeof(instance_t),
+  scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
                                (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
                                sizeof(l) / sizeof(l[0]));
-  /* temp plane list */
-  cvec_vec4 *pl = cvec_vec4_alloc(5);
-  // cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
-  // cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
-  // cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
-  // cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
-  // cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
-  s->pl = pl;
+  s->pl = generate_fov90_planes();
   render(s);
-  cvec_vec4_free(m->t);
-  cvec_vec3_free(m->v);
-  free(m);
-  cvec_vec4_free(um->t);
-  free(um);
-  cvec_vec4_free(sm->t);
-  cvec_vec3_free(sm->v);
-  free(sm);
-  cvec_vec4_free(sm1->t);
-  cvec_vec3_free(sm1->v);
-  free(sm1);
-
-  // draw_triangle((vec2){0, 0}, (vec2){60, 180}, (vec2){90, 100}, 0);
-  // draw_filled_triangle((vec2){0, 0}, (vec2){60, 180}, (vec2){90, 100}, 0);
   display_show();
   display_close();
-  printf("Ended successfully\n");
+  free_model(m);
+  free(tx);
+  printf("Render model successfully\n");
+}
+
+void single(char *mfile, char *tfile) {
+  display_init();
+  model_t *m = load_model(mfile);
+  uint32_t *tx = NULL;
+  vec2 dim = {0};
+  if (tfile) {
+    tx = load_texture(tfile, &dim);
+  }
+  light_t l[] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
+  instance_t inst[] = {
+      {m, {1.0, {0, 45, 0}, {1.0, 0.0, 5}}, tx, dim},
+  };
+  scene_t *s = construct_scene(inst, sizeof(inst) / sizeof(instance_t),
+                               (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l,
+                               sizeof(l) / sizeof(l[0]));
+  s->pl = generate_fov90_planes();
+  render(s);
+  display_show();
+  display_close();
+  free_model(m);
+  free(tx);
+  printf("Render model successfully\n");
+}
+
+int main(int argc, char *argv[]) {
+  if (argc <= 1) {
+    printf("Specify model file or test\n");
+    return -1;
+  }
+  if (strcmp(argv[1], "demo") == 0) {
+    demo("models/spot.obj", "models/spot_texture.png");
+  } else {
+    single(argv[1], argc == 3 ? argv[2] : NULL);
+  }
   return 0;
 }
