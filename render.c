@@ -617,6 +617,11 @@ static void output(int x, int y, float z, uint32_t color) {
 
 static rastered_t *rasterize(projected_t *p) {
   float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
+  for(int i = 0; i < CANVAS_HEIGHT; i++) {
+    for(int j = 0; j < CANVAS_WIDTH; j++) {
+      display_put_pixel(i, j, 0);
+    }
+  }
   /* For every triangle, calculate which pixel to color with z test */
   printf("%ld triangles to raster\n", p->tl->size);
   for (size_t i = 0; i < p->tl->size; i++) {
@@ -797,10 +802,10 @@ static rastered_t *rasterize(projected_t *p) {
         int idx = i - left_x;
         uint32_t c = c_t;
         if (has_tx) {
-          uint32_t tx = utemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].x;
-          uint32_t ty = vtemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].y;
-          tx = tx >= p->tx_dim[tt_idx].x ? tx - 1: tx;
-          ty = ty >= p->tx_dim[tt_idx].x ? ty - 1: ty;
+          int tx = utemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].x;
+          int ty = vtemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].y;
+          tx = tx >= p->tx_dim[tt_idx].x ? p->tx_dim[tt_idx].x - 1: tx;
+          ty = ty >= p->tx_dim[tt_idx].y ? p->tx_dim[tt_idx].y - 1: ty;
           tx = tx < 0 ? 0 : tx;
           ty = ty < 0 ? 0 : ty;
           int mapid = ty * p->tx_dim[tt_idx].x + tx;

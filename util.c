@@ -174,7 +174,7 @@ model_t *load_model(char *file) {
       if (buf[1] == 't') {
         /* Add vertex texture */
         sscanf(buf, "vt %f %f\n", &x, &y);
-        cvec_vec2_push(vt, (vec2){x, y});
+        cvec_vec2_push(vt, (vec2){x, 1.0 - y});
       } else {
         /* Add vertex */
         sscanf(buf, "v %f %f %f\n", &x, &y, &z);
@@ -240,4 +240,14 @@ uint32_t *load_texture(char *file, vec2 *dim) {
   stbi_image_free(data);
   texture_loaded = 1;
   return res;
+}
+
+cvec_vec4 *generate_fov90_planes() {
+  cvec_vec4 *pl = cvec_vec4_alloc(5);
+  cvec_vec4_push(pl, (vec4){0, 0, 1, -1});
+  cvec_vec4_push(pl, (vec4){1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+  cvec_vec4_push(pl, (vec4){-1 / sqrtf(2), 0, 1 / sqrtf(2), 0});
+  cvec_vec4_push(pl, (vec4){0, 1 / sqrtf(2), 1 / sqrtf(2), 0});
+  cvec_vec4_push(pl, (vec4){0, -1 / sqrtf(2), 1 / sqrtf(2), 0});
+  return pl;
 }
