@@ -71,6 +71,7 @@ static void fenster_rect(struct fenster *f, int x, int y, int w, int h,
 #include "render.h"
 #include "types.h"
 #include "util.h"
+#include <string.h>
 
 static uint16_t font5x3[] = {
     0x0000, 0x2092, 0x002d, 0x5f7d, 0x279e, 0x52a5, 0x7ad6, 0x0012, 0x4494,
@@ -127,9 +128,14 @@ void anime() {
       {m, {1.0, {0, 60, 0}, {1.0, 0.0, 5}}, tx, dim},
   };
   transform_t cam = {0};
+  int in_air = 0;
+#define JUMP_V 0.2
+  float up_v = JUMP_V, g_accel = 0.015;
   while (fenster_loop(&f) == 0) {
 
     /* Handle input */
+    if (f.keys['R'])
+      memset((void *)&cam, 0, sizeof(transform_t));
     if (f.keys['W'])
       cam.tr.z += 0.1;
     if (f.keys['S'])
@@ -138,6 +144,30 @@ void anime() {
       cam.tr.x -= 0.1;
     if (f.keys['D'])
       cam.tr.x += 0.1;
+
+    if (f.keys['J'])
+      cam.r.y -= 0.5;
+    if (f.keys['K'])
+      cam.r.x += 0.5;
+    if (f.keys['L'])
+      cam.r.y += 0.5;
+    if (f.keys['I'])
+      cam.r.x -= 0.5;
+
+    /* Jump */
+    if (!in_air && f.keys[' ']) {
+      in_air = 1;
+    }
+
+    if (in_air) {
+      cam.tr.y += up_v;
+      up_v -= g_accel;
+      if (up_v <= -JUMP_V) {
+        in_air = 0;
+        up_v = JUMP_V;
+        cam.tr.y = 0;
+      }
+    }
 
     /* Esc */
     if (f.keys[27])
