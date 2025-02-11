@@ -52,10 +52,9 @@ void output_image(FILE *file) {
 }
 
 void display_clear() {
-printf("Clear\n");
   for (int i = 0; i < f.height; i++) {
     for (int j = 0; j < f.width; j++) {
-      fenster_pixel((&f), (j), (i)) = 0xff;
+      fenster_pixel(&f, j, i) = 0x0;
     }
   }
 }
@@ -90,15 +89,15 @@ void anime() {
     scene_t *s =
         construct_scene(inst, 1, (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l, 2);
     s->pl = generate_fov90_planes();
+    display_clear();
     render(s);
     int64_t time = fenster_time();
-
-    fenster_sleep(100);
-    now = time;
-    if(not_turned){
-        not_turned = 0;
-        inst->tr.tr.x -= 0.1;
+    // 60 fps
+    if (time - now < 1000 / 60) {
+      fenster_sleep(time - now);
     }
+    now = time;
+    inst[0].tr.r.y += 0.5;
   }
   fenster_close(&f);
   free_model(m);
