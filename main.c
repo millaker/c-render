@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
   }
   if (strcmp(argv[1], "demo") == 0) {
     demo("models/spot.obj", "models/spot_texture.png");
-  } else if(strcmp(argv[1], "anime") == 0) {
+  } else if (strcmp(argv[1], "anime") == 0) {
     anime();
   } else {
     single(argv[1], argc == 3 ? argv[2] : NULL);

@@ -797,8 +797,8 @@ static rastered_t *rasterize(projected_t *p) {
         if (has_tx) {
           int tx = utemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].x;
           int ty = vtemp->arr[idx] / ztemp->arr[idx] * p->tx_dim[tt_idx].y;
-          tx = tx >= p->tx_dim[tt_idx].x ? p->tx_dim[tt_idx].x - 1: tx;
-          ty = ty >= p->tx_dim[tt_idx].y ? p->tx_dim[tt_idx].y - 1: ty;
+          tx = tx >= p->tx_dim[tt_idx].x ? p->tx_dim[tt_idx].x - 1 : tx;
+          ty = ty >= p->tx_dim[tt_idx].y ? p->tx_dim[tt_idx].y - 1 : ty;
           tx = tx < 0 ? 0 : tx;
           ty = ty < 0 ? 0 : ty;
           int mapid = ty * p->tx_dim[tt_idx].x + tx;

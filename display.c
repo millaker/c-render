@@ -112,8 +112,20 @@ void render_key(struct fenster *f) {
       *p++ = i;
     }
   }
-  fenster_text(f, 8, 8, c, 16, 0xffffff);
+  fenster_text(f, 8, 8, c, 8, 0xffffff);
 }
+
+void render_fps(struct fenster *f, int fps) {
+  char c[6] = {0};
+  c[0] = fps / 10 + '0';
+  c[1] = fps % 10 + '0';
+  c[2] = 'F';
+  c[3] = 'P';
+  c[4] = 'S';
+  fenster_text(f, 8, 64, c, 8, 0xffffff);
+}
+
+#define JUMP_V 0.2
 
 void anime() {
   display_init();
@@ -123,16 +135,19 @@ void anime() {
   vec2 dim = {0};
   tx = load_texture("models/spot_texture.png", &dim);
   int64_t now = fenster_time();
-  light_t l[2] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
-  instance_t inst[1] = {
+  light_t l[3] = {
+      {0, {0, 0, 0, 0.2}}, {1, {0, -1, 0, 0.8}}, {2, {0, 0, 0, 0.8}}};
+  instance_t inst[3] = {
       {m, {1.0, {0, 60, 0}, {1.0, 0.0, 5}}, tx, dim},
   };
   transform_t cam = {0};
   int in_air = 0;
-#define JUMP_V 0.2
   float up_v = JUMP_V, g_accel = 0.015;
-  while (fenster_loop(&f) == 0) {
+  int light_on = 1;
+  int64_t fps_time = fenster_time();
+  int fcount = 0, fps = 0;
 
+  while (fenster_loop(&f) == 0) {
     /* Handle input */
     if (f.keys['R'])
       memset((void *)&cam, 0, sizeof(transform_t));
@@ -149,10 +164,13 @@ void anime() {
       cam.r.y -= 0.5;
     if (f.keys['K'])
       cam.r.x += 0.5;
-    if (f.keys['L'])
+    if (f.keys['L'] && !(f.mod & 2))
       cam.r.y += 0.5;
     if (f.keys['I'])
       cam.r.x -= 0.5;
+
+    if (f.keys['L'] && (f.mod & 2))
+      light_on ^= 1;
 
     /* Jump */
     if (!in_air && f.keys[' ']) {
@@ -169,12 +187,24 @@ void anime() {
       }
     }
 
+    /* Lights */
+    if (light_on) {
+      l[1].p.w = 0.2;
+      l[2].p.w = 0.0;
+    } else {
+      l[1].p.w = 0.2;
+      l[2].p.x = cam.tr.x;
+      l[2].p.y = cam.tr.y;
+      l[2].p.z = cam.tr.z;
+      l[2].p.w = 0.8;
+    }
+
     /* Esc */
-    if (f.keys[27])
+    if (f.keys['Q'])
       break;
 
     /* Scene rendering */
-    scene_t *s = construct_scene(inst, 1, cam, l, 2);
+    scene_t *s = construct_scene(inst, 1, cam, l, 3);
     s->pl = generate_fov90_planes();
     display_clear();
     render(s);
@@ -185,12 +215,20 @@ void anime() {
       fenster_sleep(time - now);
     }
     now = time;
+    fcount++;
+    if (time - fps_time >= 1000) {
+      fps_time = time;
+      fps = fcount;
+      fcount = 0;
+    }
 
     /* Model Rotate */
     inst[0].tr.r.y += 0.5;
 
     /* Render key pressed */
     render_key(&f);
+    /* Render FPS */
+    render_fps(&f, fps);
   }
   fenster_close(&f);
   free_model(m);
