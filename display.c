@@ -50,3 +50,58 @@ void output_image(FILE *file) {
             (f.buf[i] & 0xff));
   }
 }
+
+void display_clear() {
+printf("Clear\n");
+  for (int i = 0; i < f.height; i++) {
+    for (int j = 0; j < f.width; j++) {
+      fenster_pixel((&f), (j), (i)) = 0xff;
+    }
+  }
+}
+
+static void fenster_rect(struct fenster *f, int x, int y, int w, int h,
+                         uint32_t c) {
+  for (int row = 0; row < h; row++) {
+    for (int col = 0; col < w; col++) {
+      fenster_pixel(f, x + col, y + row) = c;
+    }
+  }
+}
+
+#include "render.h"
+#include "types.h"
+#include "util.h"
+
+void anime() {
+  display_init();
+  fenster_open(&f);
+  model_t *m = load_model("models/spot.obj");
+  uint32_t *tx = NULL;
+  vec2 dim = {0};
+  tx = load_texture("models/spot_texture.png", &dim);
+  int64_t now = fenster_time();
+  light_t l[2] = {{0, {0, 0, 0, 0.2}}, {1, {-1, 0, -1, 0.8}}};
+  instance_t inst[1] = {
+      {m, {1.0, {0, 60, 0}, {1.0, 0.0, 5}}, tx, dim},
+  };
+  int count = 0, not_turned = 1;
+  while (fenster_loop(&f) == 0) {
+    scene_t *s =
+        construct_scene(inst, 1, (transform_t){0, {0, 0, 0}, {0, 0, 0}}, l, 2);
+    s->pl = generate_fov90_planes();
+    render(s);
+    int64_t time = fenster_time();
+
+    fenster_sleep(100);
+    now = time;
+    if(not_turned){
+        not_turned = 0;
+        inst->tr.tr.x -= 0.1;
+    }
+  }
+  fenster_close(&f);
+  free_model(m);
+  free(tx);
+  display_close();
+}
