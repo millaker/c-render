@@ -599,8 +599,7 @@ static uint32_t apply_light(float I, uint32_t c) {
   return (int)(b * I) | ((int)(g * I) << 8) | ((int)(r * I) << 16);
 }
 
-static void output(int x, int y, float z, uint32_t color) {
-  static float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
+static void output(float *zbuf, int x, int y, float z, uint32_t color) {
   int px = CANVAS_WIDTH / 2 + x;
   int py = CANVAS_HEIGHT / 2 - y;
   /* Ignore points outside canvas */
@@ -608,20 +607,15 @@ static void output(int x, int y, float z, uint32_t color) {
     return;
   }
   /* Compare 1/z, ignore smaller */
-  if (z < zbuf[px][py]) {
+  if (z < zbuf[px + py * CANVAS_WIDTH]) {
     return;
   }
-  zbuf[px][py] = z;
+  zbuf[px + py * CANVAS_WIDTH] = z;
   display_put_pixel(px, py, color);
 }
 
 static rastered_t *rasterize(projected_t *p) {
-  float zbuf[CANVAS_WIDTH][CANVAS_HEIGHT] = {0};
-  for(int i = 0; i < CANVAS_HEIGHT; i++) {
-    for(int j = 0; j < CANVAS_WIDTH; j++) {
-      display_put_pixel(i, j, 0);
-    }
-  }
+  float *zbuf = calloc(CANVAS_WIDTH * CANVAS_HEIGHT, sizeof(float));
   /* For every triangle, calculate which pixel to color with z test */
   printf("%ld triangles to raster\n", p->tl->size);
   for (size_t i = 0; i < p->tl->size; i++) {
@@ -635,7 +629,6 @@ static rastered_t *rasterize(projected_t *p) {
     vec2 p0 = p->vl->arr[idx_x];
     vec2 p1 = p->vl->arr[idx_y];
     vec2 p2 = p->vl->arr[idx_z];
-    //printf("%d/%d %d/%d %d/%d\n", idx_x, tx_idx0, idx_y, tx_idx1, idx_z, tx_idx2);
     /* Sort points with y, p0 has smallest y */
     if (p1.y < p0.y) {
       swap_vec2(&p1, &p0);
@@ -811,7 +804,7 @@ static rastered_t *rasterize(projected_t *p) {
           int mapid = ty * p->tx_dim[tt_idx].x + tx;
           c = apply_light(I, p->tx[tt_idx][mapid]);
         }
-        output(i, y, ztemp->arr[idx], c);
+        output(zbuf, i, y, ztemp->arr[idx], c);
       }
       cvec_float_free(ztemp);
       if (has_tx) {
@@ -833,6 +826,7 @@ static rastered_t *rasterize(projected_t *p) {
   free(p->tx);
   free(p->tx_dim);
   free_projected(p);
+  free(zbuf);
   return NULL;
 }
 
