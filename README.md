@@ -15,10 +15,13 @@ make ASAN=1 # to turn on address sanitizer
 
 ## Usage
 ```shell
-# To render sphere and cubes
-./main
-# To render cow
-./main models/cow.obj
+# To render a quick demo
+./main demo
+# To render single model
+./main models/*
+# To render a moving scene with controllable camera
+# Use WASD to move around the scene
+./main anime
 ```
-The loader can load obj files without texture and normal data, which is `f` and `v` only and `f` can only contain one number per vertex `f 1 2 3`. (`f 1/1 2/2 3/3` is not supported). 
+The loader can load obj files without normal data, which is `f` ,`v` and `vt` only.
 
