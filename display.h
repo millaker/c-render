@@ -11,6 +11,9 @@ int display_init();
 void display_put_pixel(int x, int y, uint32_t color);
 void display_show();
 void display_close();
+void display_clear();
 void output_image(FILE *f);
+
+void anime();
 
 #endif

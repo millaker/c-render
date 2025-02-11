@@ -1,6 +1,6 @@
 CC := gcc
 ASAN ?= 0
-CFLAGS := -g -O3
+CFLAGS := -g
 LDFLAGS := -lX11 -lm
 TARGET := main
 SRC := $(wildcard *.c)
