@@ -1,7 +1,7 @@
 # C-Render
 A pure C implementation of the book "Computer Graphics from Scratch". The rendering pipeline was designed to mimic hardware behavior that every stage will produce new data and discard the old ones. Therefore performance can be quite bad compared to other software renderer.
 
-Uses [fenster](https://github.com/zserge/fenster) as the image viewer.
+Uses [fenster](https://github.com/zserge/fenster) as the image viewer and [stb_image.h](https://github.com/nothings/stb) to load textures.
 
 ## Requirement
 All fenster requirements.
